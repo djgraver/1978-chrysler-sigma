@@ -1,0 +1,3 @@
+[out:json][timeout:170][bbox:-43.156,146.957,-42.609,147.701];
+way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"];
+out geom tags qt;
