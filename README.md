@@ -1,37 +1,51 @@
 # 1978 Chrysler Sigma
 
-An interactive 3D model of an orange 1978 Chrysler Sigma GL sedan (GE series, Astron 2000), and a small driving simulator that lets you drive it around Hobart, Tasmania. Built with three.js.
+An orange 1978 Chrysler Sigma GL (GE series, Astron 2000) modelled from photographs of the real car, and a driving simulator that puts it on the streets of Hobart, Tasmania, in the 1970s. Built with three.js.
 
-- `index.html` is the driving simulator.
+- `index.html` is the simulator.
 - `viewer.html` is the car on its own, to orbit and inspect.
 
 ## Running it
 
-The simulator reads its map from `roads.png` and `terrain.png`, so it has to be served over HTTP; opening the file directly will not work.
+The simulator reads its map from the image files next to it, so serve the folder over HTTP; opening the file directly will not work.
 
     python3 -m http.server
     # then open http://localhost:8000/
 
-Controls: W A S D or the arrow keys to drive, Space for the handbrake, C to switch between chase and driver view, R to get back on the road, drag to look around. On a phone there are on-screen pedals.
+Controls: W A S D or the arrow keys to drive, Space for the handbrake, C for chase or driver view, R to get back on the road, M to switch the radio on or off, N for the next station, drag to look around. On a phone there are on-screen pedals. Time of day, the day cycle, weather and the film look are in the "Time & weather" panel.
 
-## How the world is built
+## What is in the world
 
-Everything within 30 km of the Hobart GPO is generated in the browser as you drive:
+Everything within 30 km of the Hobart GPO is generated in the browser as you drive, from these files:
 
-- `terrain.png` holds ground heights on a 40 m grid (16 bits per sample in the red and green channels), resampled from the Mapzen/AWS terrain tiles.
-- `roads.png` holds the street network (about 3,000 km of road in 16,000 segments, with names, widths, one-way and bridge flags) from OpenStreetMap, packed as bytes into an image.
-- The land is drawn as a quadtree of tiles, 4 km across in the distance down to 4 m detail under the car. Near roads the land is graded to meet the road surface. Bridges span between their abutments.
-- Houses and city buildings are placed procedurally along streets in built-up areas. They are not real buildings.
-- Other cars follow the street network, keep left and respect one-way streets.
+| File | What it holds |
+| --- | --- |
+| `terrain.png` | Ground height on a 40 m grid (16 bits in red and green), from the Mapzen/AWS terrain tiles |
+| `ground.jpg` | Ground colour on the same grid, from Sentinel-2 cloudless imagery |
+| `land.png` | Tree cover (red) and water (green) on a 20 m grid, classified from the same imagery |
+| `roads.png` | About 3,000 km of OpenStreetMap streets, smoothed, with names, widths, one-way, bridge and footpath flags, plus 504 traffic signals and 3,700 mapped trees, packed as bytes in an image |
+| `buildings.png` | 152,000 OpenStreetMap building footprints, each with a style, roof shape, pitch, roof and wall colour and height |
 
-## How the car was made
+How each part is made:
 
-The body shape was read off a side-on photograph of the car after solving for where the camera stood, then checked by rendering the model from the same camera position over the front, rear and three-quarter photographs. Length (4,300 mm), width (1,660 mm), wheelbase (2,515 mm) and track are the factory figures and set the scale.
+- **Roads** follow smoothed centrelines. Heights are smoothed along each road and averaged where roads overlap, and bridges span between their banks. Urban streets get kerbs and footpaths that stop short of junctions, and street lamps every 38 m.
+- **Buildings** are real footprints. When the data is packed, each gets a style from its OSM tags, size and where it is in Hobart: Georgian sandstone, Federation brick, weatherboard, 60s-70s brick veneer, modern, shed, industrial, city block, flats or church. Roof shape and colour come from OSM tags where present (rare). Otherwise they are picked from that style's palette, nudged toward the colour the satellite sees for bigger roofs. The page then builds walls, window patterns and roofs from one general method. Hipped, gabled, half-hipped and pyramid roofs project each corner of the footprint onto a ridge along the building's long axis. Skillion roofs are a tilted plane, and flat roofs get parapets.
+- **Trees** come from OSM's mapped trees, tree cover read from the imagery, garden trees in built-up blocks, and street trees along footpaths.
+- **kunanyi / Mt Wellington** turns to dark brown and grey rock above the forest, with patchy snow on top. The snowline drops when it snows.
+- **Traffic lights** come from OSM signal nodes and run two-phase cycles; the traffic stops for them.
+- **Traffic** is 80 cars in seven simple period body types: sedan, wagon, ute, van, small car, fastback and truck.
+- **Time and weather:** the sun follows its real path over Hobart for today's date. Weather can be clear, overcast, rain, fog or snow, or changing. At night there are lit windows, street lamps, headlights and tail lights.
+- **Film look:** warm faded colour grading, halation round bright lights, grain and vignette, applied as a post-process.
+- **Radio:** five stations of original music composed live in the browser in 70s styles (lounge, disco, soft rock, funk, glam). No recordings are used.
+
+The Sigma has a four-speed gearbox, takes about 17 s to reach 100 km/h, and is limited to 100 km/h.
 
 ## Source
 
-`src/car.js` is the car model and viewer, `src/sim.js` the simulator (the model is spliced in where it says `/*SIGMA*/`), and `src/head.html` the simulator's page markup. `tools/` has the scripts that fetched and packed the map data.
+- `src/car.js` is the car model and viewer.
+- `src/sim/` holds the simulator in parts (core, world, city, cars, sky, radio, main) plus its page markup. The car model is spliced in after the core.
+- `tools/` has the scripts that fetched and packed the data. `qb.py` fetches OSM buildings and points, `s2tiles.py` and `mosaic.py` fetch the imagery, `land.py` classifies it, and `prep4.py` packs roads, signals, trees and buildings.
 
 ## Credits
 
-Street data (c) OpenStreetMap contributors, available under the Open Database Licence. Elevation from the Mapzen terrain tiles hosted by AWS.
+Streets, buildings, trees and signals (c) OpenStreetMap contributors, Open Database Licence. Elevation from the Mapzen terrain tiles hosted by AWS. Tree cover, water and ground colour derived from Sentinel-2 cloudless by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016), CC BY 4.0.

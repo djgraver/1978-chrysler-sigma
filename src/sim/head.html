@@ -1,0 +1,153 @@
+<title>1978 Chrysler Sigma</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+  /* A full-screen drive through 1970s Hobart. The instrument panels use a fixed warm-dark look that does not follow the page theme. */
+  :root {
+    color-scheme: dark;
+    --bg: #1d1915; --panel: rgba(33, 26, 20, 0.8); --fg: #f4ead6; --muted: #c9b99c; --line: rgba(244, 234, 214, 0.18); --accent: #ff7a1f; --mustard: #e0a83a;
+    --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); overflow: hidden; }
+  .stage { position: fixed; inset: 0; background: #2a2620; }
+  #gl { width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+  .hud { position: fixed; pointer-events: none; display: flex; gap: 8px; }
+  .hud > * { pointer-events: auto; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(6px); }
+  .tl { top: calc(12px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); flex-direction: column; max-width: min(56vw, 300px); }
+  .dash { padding: 8px 12px; }
+  .dash h1 { margin: 0 0 3px; font: 600 11px/1.2 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--mustard); }
+  #street { font-weight: 600; font-size: 14.5px; overflow-wrap: anywhere; }
+  #info { color: var(--muted); font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .tr { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); flex-direction: column; align-items: flex-end; width: 236px; max-width: 46vw; }
+  #map { width: 150px; height: 150px; display: block; border-radius: 9px; }
+  .mapwrap { padding: 0; overflow: hidden; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .btn, select {
+    font: 500 12.5px/1 var(--font); color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 12px; cursor: pointer; backdrop-filter: blur(6px);
+  }
+  .btn[aria-pressed="true"], .btn[aria-expanded="true"] { background: rgba(255, 122, 31, 0.85); border-color: transparent; color: #1d1209; }
+  select { max-width: 100%; appearance: none; -webkit-appearance: none; padding-right: 26px; background-image: linear-gradient(45deg, transparent 50%, var(--fg) 50%), linear-gradient(135deg, var(--fg) 50%, transparent 50%); background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%; background-size: 5px 5px; background-repeat: no-repeat; }
+  select option { color: #111; background: #fff; }
+  .btn:hover, select:hover { border-color: rgba(244, 234, 214, 0.45); }
+  .btn:focus-visible, select:focus-visible, input:focus-visible, #gl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sheet { padding: 12px; display: grid; gap: 10px; width: 100%; box-sizing: border-box; font-size: 12.5px; }
+  .sheet h2 { margin: 0; font: 600 11px/1.2 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--mustard); }
+  .field { display: grid; gap: 5px; }
+  .field label, .chk { color: var(--muted); }
+  .inline { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .chk { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=checkbox] { accent-color: var(--accent); }
+  .val { font-variant-numeric: tabular-nums; color: var(--fg); font-weight: 600; }
+  .radioface { display: flex; align-items: baseline; gap: 8px; background: #120e0b; border: 1px solid rgba(224, 168, 58, 0.35); border-radius: 6px; padding: 7px 10px; }
+  #freq { font: 600 20px/1 var(--display); color: #ffb347; font-variant-numeric: tabular-nums; text-shadow: 0 0 6px rgba(255, 140, 40, 0.6); }
+  .mhz { color: #b98a4a; font-size: 11px; }
+  #station { margin-left: auto; color: var(--fg); font-weight: 600; font-size: 12px; text-align: right; }
+  .note { color: var(--muted); font-size: 11px; line-height: 1.4; margin: 0; }
+  .gaugebox { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
+  #gauges { width: 232px; height: 112px; display: block; }
+  .bl { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); flex-direction: column; align-items: flex-start; max-width: calc(50vw - 140px); }
+  .help { padding: 7px 11px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .help b { color: var(--fg); font-weight: 600; }
+  .credit { font-size: 10.5px; color: rgba(244, 234, 214, 0.75); text-shadow: 0 0 3px rgba(0, 0, 0, 0.8); pointer-events: none; line-height: 1.35; }
+  .pads { position: fixed; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); display: none; justify-content: space-between; pointer-events: none; }
+  .pads > div { display: flex; gap: 10px; pointer-events: auto; }
+  .pad { width: 64px; height: 64px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: 600 14px/1 var(--display); touch-action: none; user-select: none; -webkit-user-select: none; }
+  .pad.tall { height: 88px; }
+  .pad.on { background: rgba(255, 122, 31, 0.85); }
+  @media (pointer: coarse) {
+    .pads { display: flex; } .help { display: none; }
+    .gaugebox { bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
+    #gauges { width: 180px; height: 88px; }
+    .bl { bottom: calc(205px + env(safe-area-inset-bottom, 0px)); max-width: 60vw; }
+  }
+  @media (max-width: 560px) { #map { width: 112px; height: 112px; } .tr { width: 190px; } #gauges { width: 180px; height: 88px; } .credit { font-size: 9.5px; } }
+  @media (max-width: 560px) and (pointer: fine) { .bl { max-width: 60vw; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); } }
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 5; text-align: center; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+  #loading h2 { font: 600 28px/1.2 var(--display); margin: 0 0 8px; color: var(--mustard); text-wrap: balance; }
+  #loading p { margin: 0; color: var(--muted); font-size: 14px; }
+</style>
+
+<div class="stage" id="stage"><canvas id="gl" tabindex="0" aria-label="Driving view: an orange 1978 Chrysler Sigma on the streets of Hobart"></canvas></div>
+
+<div class="hud tl">
+  <div class="panel dash">
+    <h1>1978 Chrysler Sigma</h1>
+    <div id="street">&nbsp;</div>
+    <div id="info">&nbsp;</div>
+  </div>
+</div>
+
+<div class="gaugebox"><canvas id="gauges" aria-label="Speedometer and tachometer"></canvas></div>
+
+<div class="hud tr">
+  <div class="panel mapwrap"><canvas id="map" aria-label="Street map around the car"></canvas></div>
+  <select id="places" aria-label="Jump to a place"></select>
+  <div class="row">
+    <button class="btn" id="camBtn">Driver view</button>
+    <button class="btn" id="resetBtn">Back on road</button>
+  </div>
+  <div class="row">
+    <button class="btn" id="envBtn" aria-expanded="false" aria-controls="envPanel">Time &amp; weather</button>
+    <button class="btn" id="radioBtn" aria-expanded="false" aria-controls="radioPanel">Radio</button>
+  </div>
+  <div class="panel sheet" id="envPanel" hidden>
+    <h2>Time &amp; weather</h2>
+    <div class="field">
+      <div class="inline"><label for="timeSl">Time of day</label><span class="val" id="timeLbl">16:30</span></div>
+      <input type="range" id="timeSl" min="0" max="23.99" step="0.05" value="16.5">
+    </div>
+    <div class="inline">
+      <label class="chk"><input type="checkbox" id="cycleChk" checked> Day cycle</label>
+      <select id="speedSel" aria-label="Day cycle speed">
+        <option value="60" selected>1 hr per min</option>
+        <option value="360">1 hr per 10 s</option>
+        <option value="1">Real time</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="weatherSel">Weather</label>
+      <select id="weatherSel">
+        <option value="auto">Changing</option>
+        <option value="clear" selected>Clear</option>
+        <option value="cloudy">Overcast</option>
+        <option value="rain">Rain</option>
+        <option value="fog">Fog</option>
+        <option value="snow">Snow</option>
+      </select>
+    </div>
+    <h2>Film</h2>
+    <label class="chk"><input type="checkbox" id="filmChk" checked> 70s film colour</label>
+    <div class="field"><label for="grainSl">Grain</label><input type="range" id="grainSl" min="0" max="1.5" step="0.05" value="0.6"></div>
+  </div>
+  <div class="panel sheet" id="radioPanel" hidden>
+    <h2>Radio</h2>
+    <div class="radioface"><span id="freq">96.9</span><span class="mhz">MHz</span><span id="station">Off</span></div>
+    <div class="row" style="justify-content: space-between">
+      <button class="btn" id="radioPower" aria-pressed="false">Power</button>
+      <span class="row"><button class="btn" id="seekDn" aria-label="Previous station">&#9664;</button><button class="btn" id="seekUp" aria-label="Next station">&#9654;</button></span>
+    </div>
+    <div class="field"><label for="tune">Tuning</label><input type="range" id="tune" min="88" max="108" step="0.1" value="96.9"></div>
+    <div class="field"><label for="vol">Volume</label><input type="range" id="vol" min="0" max="1" step="0.01" value="0.55"></div>
+    <p class="note">Five stations of new music written on the fly in 70s styles: lounge, disco, soft rock, funk and glam.</p>
+  </div>
+</div>
+
+<div class="hud bl">
+  <div class="panel help"><b>W A S D</b> or <b>arrows</b> drive &middot; <b>Space</b> handbrake &middot; <b>C</b> view &middot; <b>R</b> back on road &middot; <b>M</b> radio &middot; <b>N</b> next station &middot; drag to look</div>
+  <div class="credit">Streets and buildings &copy; OpenStreetMap contributors &middot; Heights: Mapzen terrain tiles &middot; Tree cover and water: Sentinel-2 cloudless by EOX (Copernicus Sentinel data 2016)</div>
+</div>
+
+<div class="pads" aria-hidden="true">
+  <div><button class="pad" id="tl">&#9664;</button><button class="pad" id="tr">&#9654;</button></div>
+  <div><button class="pad" id="tb">Brake</button><button class="pad tall" id="tg">Go</button></div>
+</div>
+
+<div id="loading"><div><h2>Hobart, 1978</h2><p id="loadmsg">Starting up&hellip;</p></div></div>
+
