@@ -245,7 +245,7 @@
      ========================================================== */
   var AX_F = 1.425, AX_R = -1.090;          /* axle lines: 2,515 mm wheelbase */
   var TRACK_F = 1.350, TRACK_R = 1.340;
-  var TYRE_R = 0.297, TYRE_W = 0.185;
+  var TYRE_R = 0.305, TYRE_W = 0.215;
   var X_NOSE = 2.085, X_TAIL = -2.042;      /* body ends; bumpers reach +/-2.150 */
 
   /*BODYDATA*/
@@ -276,7 +276,7 @@
   function roofY(x, z) { return roofC(x) - ROOF_DROP * Math.pow(Math.abs(z) / 0.6, 2.3); }
   function wsY(x, z) { return WS.y0 + (WS.x0 - WS.bow * Math.pow(z / 0.7, 2) - x) * WS.slope; }
   function rgY(x, z) { return RG.y0 + (x - (RG.x0 + RG.bow * Math.pow(z / 0.62, 2))) * RG.slope; }
-  function capTop(x, z) { return smin(smin(roofY(x, z), wsY(x, z), 0.03), rgY(x, z), 0.03); }
+  function capTop(x, z) { return smin(smin(roofY(x, z), wsY(x, z), 0.055), rgY(x, z), 0.055); }
   function topY(x, z) { return Math.max(deck(x, z), Math.min(capTop(x, z), sidePl(x, z))); }
   /* half-width of the cabin top at station x: where the glass or roof meets the side plane, or the deck */
   function zRail(x) {
@@ -291,9 +291,9 @@
   /* body side below the shoulder: z as a function of height */
   function sideProfile(x) {
     var b = yB(x), s = yS(x), mY = yM(x), zm = zM(x), zs = zS(x), d = zm - zs;
-    var p = Math.min(yP(x), s - 0.05);
+    var p = Math.min(yP(x), s - 0.07);
     if (mY > p - 0.03) mY = p - 0.03;
-    return curve([[b, zm - 0.050], [b + 0.07, zm - 0.016], [mY, zm], [p, zm - 0.30 * d], [s - 0.03, zs + 0.10 * d], [s, zs]]);
+    return curve([[b, zm - 0.050], [b + 0.07, zm - 0.016], [mY, zm], [p, zm - 0.12 * d], [s - 0.045, zm - 0.35 * d], [s - 0.012, zs + 0.22 * d], [s, zs]]);
   }
   function sideZ(x, y) { return sideProfile(x)(y); }
   /* rake and plan bow of the nose and tail, applied to everything built in body coordinates */
@@ -357,6 +357,20 @@
     }
     return out;
   }
+  /* round every corner of a closed outline with a fixed radius */
+  function roundPoly(pts, r) {
+    var out = [], n = pts.length;
+    for (var i = 0; i < n; i++) {
+      var p = pts[i], a = pts[(i + n - 1) % n], b = pts[(i + 1) % n];
+      var la = Math.hypot(a[0] - p[0], a[1] - p[1]), lb = Math.hypot(b[0] - p[0], b[1] - p[1]), rr = Math.min(r, 0.45 * la, 0.45 * lb);
+      var s0 = [p[0] + (a[0] - p[0]) * rr / la, p[1] + (a[1] - p[1]) * rr / la], s1 = [p[0] + (b[0] - p[0]) * rr / lb, p[1] + (b[1] - p[1]) * rr / lb];
+      for (var k = 0; k <= 4; k++) {
+        var t = k / 4, u = 1 - t;
+        out.push([u * u * s0[0] + 2 * u * t * p[0] + t * t * s1[0], u * u * s0[1] + 2 * u * t * p[1] + t * t * s1[1]]);
+      }
+    }
+    return out;
+  }
   function patch(mat, o) {
     mat.onBeforeCompile = function (sh) {
       sh.vertexShader = 'varying vec3 vLoc;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vLoc = position;');
@@ -408,22 +422,29 @@
   /* ==========================================================
      OUTLINES (body coordinates)
      ========================================================== */
-  var ARCH_F = smoothLine([[0.969, 0.20], [0.969, 0.303], [1.04, 0.433], [1.11, 0.54], [1.181, 0.615], [1.274, 0.668], [1.389, 0.693],
-                           [1.494, 0.689], [1.58, 0.657], [1.647, 0.583], [1.674, 0.476], [1.677, 0.368], [1.677, 0.20]], true);
-  var ARCH_R = smoothLine([[-1.422, 0.20], [-1.422, 0.373], [-1.405, 0.455], [-1.376, 0.519], [-1.322, 0.583], [-1.228, 0.626], [-1.117, 0.647],
-                           [-1.011, 0.653], [-0.885, 0.643], [-0.781, 0.594], [-0.719, 0.53], [-0.679, 0.433], [-0.666, 0.364], [-0.666, 0.20]], true);
+  function archLine(pts, shift, ax) {
+    var out = smoothLine(pts.map(function (p) { return [p[0] + shift, p[1]]; }), true), need = TYRE_R + 0.045;
+    return out.map(function (p) {
+      var dx = p[0] - ax, dy = p[1] - TYRE_R, d = Math.hypot(dx, dy);
+      return d < need ? [ax + dx / d * need, TYRE_R + dy / d * need] : p;
+    });
+  }
+  var ARCH_F = archLine([[0.969, 0.20], [0.969, 0.303], [1.04, 0.433], [1.11, 0.54], [1.181, 0.615], [1.274, 0.668], [1.389, 0.693],
+                         [1.494, 0.689], [1.58, 0.657], [1.647, 0.583], [1.674, 0.476], [1.677, 0.368], [1.677, 0.20]], 0.040, AX_F);
+  var ARCH_R = archLine([[-1.422, 0.20], [-1.422, 0.373], [-1.405, 0.455], [-1.376, 0.519], [-1.322, 0.583], [-1.228, 0.626], [-1.117, 0.647],
+                         [-1.011, 0.653], [-0.885, 0.643], [-0.781, 0.594], [-0.719, 0.53], [-0.679, 0.433], [-0.666, 0.364], [-0.666, 0.20]], -0.045, AX_R);
   /*OUTLINES*/
   var SEAMS = [
     [[-0.134, 0.957], [-0.148, 0.365]],
     [[0.754, 0.951], [0.82, 0.83], [0.854, 0.731], [0.852, 0.62], [0.838, 0.539], [0.812, 0.43], [0.789, 0.365]],
-    [[-1.004, 0.99], [-0.995, 0.86], [-0.975, 0.70], [-0.94, 0.675], [-0.87, 0.662], [-0.80, 0.635], [-0.74, 0.575], [-0.70, 0.49], [-0.672, 0.365]],
-    [[-0.672, 0.365], [0.789, 0.365]]
+    [[-1.004, 0.99], [-0.995, 0.86], [-0.978, 0.715], [-0.962, 0.688], [-0.915, 0.672], [-0.850, 0.645], [-0.790, 0.585], [-0.748, 0.49], [-0.722, 0.365]],
+    [[-0.722, 0.365], [0.789, 0.365]]
   ];
   /* glass openings on the side plane, as [x, height above the belt] */
   var WIN_R = [[-0.925, 0.012], [-0.700, 0.292], [-0.176, 0.328], [-0.160, 0.012]];
   var WIN_F = [[-0.072, 0.012], [-0.088, 0.328], [0.285, 0.328], [0.455, 0.155], [0.640, 0.012]];
   /*ENDOUTLINES*/
-  function winPoly(w) { return w.map(function (p) { return [p[0], yS(p[0]) + p[1]]; }); }
+  function winPoly(w) { return roundPoly(w.map(function (p) { return [p[0], yS(p[0]) + p[1]]; }), 0.028); }
 
   /* ==========================================================
      BODY SHELL
@@ -490,14 +511,17 @@
   function railAt(x) { var best = RAIL[0]; RAIL.forEach(function (r) { if (Math.abs(r[0] - x) < Math.abs(best[0] - x)) best = r; }); return best; }
   var WS_POLY, RG_POLY, LV1, LV2;
   (function () {
-    var a = railAt(0.76), b = railAt(0.58), c = railAt(0.42), d = railAt(0.375);
-    var IN = 0.034;
-    WS_POLY = [[-0.06, 0.985], [a[1] - IN - 0.012, 0.985], [a[1] - IN, 1.0], [b[1] - IN, b[2]], [c[1] - IN, c[2] - 0.012], [d[1] - IN - 0.02, d[2] + 0.004],
-               [0.30, wsY(0.37, 0.30) + 0.0], [-0.06, wsY(0.37, 0.0) - 0.004]];
-    var e = railAt(-1.40), f = railAt(-1.20), g = railAt(-1.00), h = railAt(-0.93);
-    var IR = 0.095;
-    RG_POLY = [[-0.06, 1.070], [e[1] - IR - 0.012, 1.070], [e[1] - IR, 1.085], [f[1] - IR, f[2]], [g[1] - IR, g[2] - 0.012], [h[1] - IR - 0.02, h[2] + 0.0],
-               [0.30, rgY(-0.93, 0.30)], [-0.06, rgY(-0.93, 0.0)]];
+    function rounded(poly) { return roundPoly(poly, 0.07); }
+    var a = railAt(0.76), b = railAt(0.58), c = railAt(0.47), IN = 0.034, XT = 0.415, zt = c[1] - IN - 0.03, k;
+    var ws = [[-0.30, 0.985], [a[1] - IN - 0.02, 0.985], [a[1] - IN, 1.01], [b[1] - IN, b[2]], [c[1] - IN, c[2]]];
+    for (k = 4; k >= 0; k--) ws.push([zt * k / 4, capTop(XT, zt * k / 4) - 0.006]);
+    ws.push([-0.30, capTop(XT, 0) - 0.006]);
+    WS_POLY = rounded(ws);
+    var e = railAt(-1.40), f = railAt(-1.20), g = railAt(-1.06), IR = 0.095, XR = -0.975, zr = g[1] - IR - 0.03;
+    var rg = [[-0.30, 1.070], [e[1] - IR - 0.02, 1.070], [e[1] - IR, 1.095], [f[1] - IR, f[2]], [g[1] - IR, g[2]]];
+    for (k = 4; k >= 0; k--) rg.push([zr * k / 4, capTop(XR, zr * k / 4) - 0.006]);
+    rg.push([-0.30, capTop(XR, 0) - 0.006]);
+    RG_POLY = rounded(rg);
     function lv(x0, x1) {
       var p = railAt(x0), q = railAt(x1);
       return [[p[1] - 0.070, p[2] - 0.004], [p[1] - 0.016, p[2] - 0.004], [q[1] - 0.016, q[2] + 0.004], [q[1] - 0.070, q[2] + 0.004]];
@@ -543,7 +567,7 @@
     back: '0.05,0.05,0.05' });
 
   var floorMat = patch(new THREE.MeshStandardMaterial({ color: C('#070808'), roughness: 0.95, side: THREE.DoubleSide }), { key: 'fl',
-    cut: '  if(abs(vLoc.z)>0.47&&((vLoc.x>0.95&&vLoc.x<1.70)||(vLoc.x>-1.44&&vLoc.x<-0.65))) discard;\n' });
+    cut: '  if(abs(vLoc.z)>0.47&&((vLoc.x>0.99&&vLoc.x<1.80)||(vLoc.x>-1.49&&vLoc.x<-0.69))) discard;\n' });
   [1, -1].forEach(function (sgn) {
     var cap = bandGeo(0, ROW_R, sgn), mid = bandGeo(ROW_R, ROW_S, sgn), low = bandGeo(ROW_S, ROW_B, sgn), flr = bandGeo(ROW_B, NROW, sgn);
     add(cap, paintCap); add(cap, chromeCap, { noShadow: true });
@@ -589,8 +613,8 @@
     g.setIndex(idx); g.computeVertexNormals();
     add(g, capPaint);
   }
-  valance(2.000, 0.520, 1.850, 0.352, 0.745, 0.045);
-  valance(-2.020, 0.540, -1.870, 0.440, 0.740, 0.040);
+  valance(2.000, 0.520, 1.850, 0.352, 0.775, 0.070);
+  valance(-2.020, 0.540, -1.870, 0.440, 0.765, 0.055);
 
   /* ---------- wheel wells ---------- */
   function well(arch, zc) {
@@ -628,14 +652,14 @@
     return add(g, mat, { noShadow: true });
   }
   /*STRIPS*/
-  var RUB = [[-1.975, -1.02], [-0.985, -0.128], [-0.100, 0.842], [0.868, 1.185], [1.615, 1.905]];
+  var RUB = [[-1.975, -1.02], [-0.985, -0.128], [-0.100, 0.842], [0.868, 1.215], [1.660, 1.905]];
   /*ENDSTRIPS*/
   [1, -1].forEach(function (sgn) {
     RUB.forEach(function (s) {
       sideRibbon(yM, 0.016, s[0], s[1], rubber, 0.007, sgn);
       sideRibbon(function (x) { return yM(x) + 0.0095; }, 0.004, s[0], s[1], chrome, 0.0075, sgn);
     });
-    sideRibbon(function () { return 0.342; }, 0.024, -0.666, 0.955, chrome, 0.006, sgn);
+    sideRibbon(function () { return 0.342; }, 0.024, -0.708, 0.995, chrome, 0.006, sgn);
   });
 
   /* ---------- roof gutter ---------- */
@@ -651,7 +675,7 @@
   function facePatch(end, z0, z1, y0, y1, off, mat, uv) {
     var xe = end > 0 ? X_NOSE : X_TAIL, nz = Math.max(2, Math.round(Math.abs(z1 - z0) / 0.05)), ny = 3, pos = [], idx = [], uvs = [], i, j;
     for (i = 0; i <= nz; i++) for (j = 0; j <= ny; j++) {
-      var z = z0 + (z1 - z0) * i / nz, y = y0 + (y1 - y0) * j / ny;
+      var y = y0 + (y1 - y0) * j / ny, zl = sideZ(xe, clamp(y, yB(xe), yS(xe))) - 0.006, z = clamp(z0 + (z1 - z0) * i / nz, -zl, zl);
       pos.push(warpX(xe, y, z) + end * off, y, z);
       uvs.push(uv ? uv[0] + (uv[2] - uv[0]) * i / nz : i / nz, uv ? uv[1] + (uv[3] - uv[1]) * j / ny : j / ny);
     }
@@ -905,7 +929,7 @@
       lk.rotation.x = Math.PI / 2; lk.position.copy(sidePoint(LOCK[0], LOCK[1], sgn, 0.003));
     });
     CORNER.forEach(function (sgn) {
-      var x0 = X_NOSE - 0.092, x1 = X_NOSE - 0.001, yc = (GR.y0 + GR.y1) / 2, hh = GR.y1 - GR.y0 - 0.008;
+      var x0 = X_NOSE - 0.092, x1 = X_NOSE - 0.001, yc = (GR.y0 + GR.y1) / 2 - 0.012, hh = GR.y1 - GR.y0 - 0.032;
       sideRibbon(function () { return yc; }, hh + 0.012, x0 - 0.006, x1, chrome, 0.004, sgn, 6);
       sideRibbon(function () { return yc; }, hh, x0, x1, amberPale, 0.007, sgn, 6);
     });
@@ -977,7 +1001,7 @@
   }
   var wheelFace = new THREE.MeshStandardMaterial({ map: wheelTexture(), metalness: 0.55, roughness: 0.5, envMapIntensity: 0.8 });
   function makeWheel(x, z, sgn) {
-    var g = new THREE.Group(), RIM = 0.187, hw = TYRE_W / 2;
+    var g = new THREE.Group(), RIM = 0.192, hw = TYRE_W / 2;
     var prof = [[RIM - 0.004, -hw + 0.01], [RIM + 0.03, -hw], [TYRE_R - 0.035, -hw + 0.004], [TYRE_R - 0.008, -hw + 0.022], [TYRE_R, -hw + 0.05],
                 [TYRE_R, hw - 0.05], [TYRE_R - 0.008, hw - 0.022], [TYRE_R - 0.035, hw - 0.004], [RIM + 0.03, hw], [RIM - 0.004, hw - 0.01]]
       .map(function (p) { return new THREE.Vector2(p[0], p[1]); });
@@ -1017,7 +1041,7 @@
     box(0.13, 0.20, 0.94, -1.02, 0.66, 0, vinyl, 0.30);
     box(0.36, 0.02, 1.26, -1.30, 1.02, 0, trimDark, 0.0);          /* parcel shelf */
     var sw = add(new THREE.TorusGeometry(0.185, 0.013, 8, 32), trimDark, { noShadow: true });
-    sw.position.set(0.47, 0.935, 0.37); sw.rotation.y = Math.PI / 2; sw.rotation.z = 0; sw.rotateX(0); sw.rotateY(0); sw.rotation.set(0, Math.PI / 2, 0); sw.rotateX(-0.42);
+    sw.position.set(0.47, 0.935, 0.37); sw.rotation.y = Math.PI / 2; sw.rotation.z = 0; sw.rotateX(0); sw.rotateY(0); sw.rotation.set(0, Math.PI / 2, 0); sw.rotateX(0.42);
     var col = add(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8), trimDark, { noShadow: true });
     col.position.set(0.60, 0.88, 0.37); col.rotation.z = 1.15;
     var hub = add(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 16), trimDark, { noShadow: true });
