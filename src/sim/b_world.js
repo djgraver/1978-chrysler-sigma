@@ -192,7 +192,21 @@
       stampV[v] = id;
       var r = VR[v] * wide + 0.3, b = pos.length / 3, y = VH[v] + lift + 0.012;
       pos.push(VX[v], y, VZ[v]); uv.push(0.88, 0.5);
-      for (var q = 0; q < 18; q++) { var a = q * Math.PI / 9; pos.push(VX[v] + Math.cos(a) * r, y, VZ[v] + Math.sin(a) * r); uv.push(0.88, 0.5); }
+      /* the junction follows the slope of the roads that meet there instead of lying flat */
+      var gx = 0, gz = 0, gw = 0;
+      for (var q2 = VAS[v]; q2 < VAS[v + 1]; q2++) {
+        var ee = VAI[q2] >> 1, en = VAI[q2] & 1, ia = en ? ES[ee + 1] - 1 : ES[ee], ib = en ? ia - 1 : ia + 1;
+        var ddx = PX[ib] - PX[ia], ddz = PZ[ib] - PZ[ia], dl = ddx * ddx + ddz * ddz;
+        if (dl < 0.01) continue;
+        var dh = PH[ib] - PH[ia];
+        gx += ddx * dh / dl; gz += ddz * dh / dl; gw += 1;
+      }
+      if (gw) { gx /= gw; gz /= gw; }
+      var gl = Math.hypot(gx, gz); if (gl > 0.25) { gx *= 0.25 / gl; gz *= 0.25 / gl; }
+      for (var q = 0; q < 18; q++) {
+        var a = q * Math.PI / 9, ox = Math.cos(a) * r, oz = Math.sin(a) * r;
+        pos.push(VX[v] + ox, y + ox * gx + oz * gz, VZ[v] + oz); uv.push(0.88, 0.5);
+      }
       for (q = 0; q < 18; q++) idx.push(b, b + 1 + (q + 1) % 18, b + 1 + q);
     }
     function quad(ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, col) {

@@ -318,19 +318,51 @@
     drawHud(dt);
     renderFrame();
   }
-  window.__sim = { stepCar: stepCar, types: typeMeshes, renderer: renderer, scene: scene, view: function (y, p, d) { orbit.yaw = y; orbit.pitch = p; camDist = d; orbit.idle = -1e9; }, sigs: SIGS, others: others, car: car, keys: keys, place: placeOnRoad, warmAll: function () { for (var k = 0; k < 4; k++) { plan(car.x, car.z); while (queue.length) buildSome(1000); } plan(car.x, car.z); }, chunks: chunks, env: env, film: film, setWeather: setWeather, radio: Radio,
+  window.__sim = { where: function () {
+      var near = 0, mid = 0, list = [];
+      for (var e = 0; e < NE; e++) { if (EF[e] & 2) continue; var a = ES[e], b = ES[e + 1] - 1, j0 = a, j1 = a;
+        for (var i = a; i <= b; i++) {
+          while (j0 < i && PL[i] - PL[j0 + 1] >= 10) j0++;
+          while (j1 < b && PL[j1] - PL[i] < 10) j1++;
+          if (PL[i] - PL[j0] < 10 || PL[j1] - PL[i] < 10) continue;
+          var t = (PL[i] - PL[j0]) / (PL[j1] - PL[j0]), d = Math.abs(PH[i] - (PH[j0] + (PH[j1] - PH[j0]) * t));
+          if (d > 0.15) { var dj = Math.min(PL[i] - PL[a], PL[b] - PL[i]); if (dj < 30) near++; else mid++; if (list.length < 8 && dj >= 30) list.push([Math.round(PX[i]), Math.round(PZ[i]), +d.toFixed(2), Math.round(PL[b]), ECL[e], EF[e]]); }
+        } }
+      return { nearJunction: near, midRoad: mid, sample: list };
+    }, smoothNet: smoothNet, worst: function (k) { var out = []; for (var e = 0; e < NE; e++) { if (EF[e] & 2) continue; for (var i = ES[e] + 1; i < ES[e + 1] - 1; i++) { var l1 = PL[i] - PL[i - 1], l2 = PL[i + 1] - PL[i]; if (l1 < 1 || l2 < 1) continue; var g = Math.abs((PH[i + 1] - PH[i]) / l2 - (PH[i] - PH[i - 1]) / l1); out.push([g, i, e]); } } out.sort(function (a, b) { return b[0] - a[0]; }); return out.slice(0, k).map(function (o) { var i = o[1], e = o[2]; return [+(o[0] * 100).toFixed(1), Math.round(PX[i]), Math.round(PZ[i]), +PH[i - 1].toFixed(1), +PH[i].toFixed(1), +PH[i + 1].toFixed(1), i - ES[e], ES[e + 1] - 1 - i, ECL[e], EF[e], +(PL[i] - PL[i - 1]).toFixed(1), +(PL[i + 1] - PL[i]).toFixed(1)]; }); }, roadStats: function () {
+      /* bump height: how far each point sits off the straight line between the road 10 m either side of it */
+      var n = 0, sum = 0, mx = 0, big = 0, steep = 0;
+      for (var e = 0; e < NE; e++) { if (EF[e] & 2) continue; var a = ES[e], b = ES[e + 1] - 1, j0 = a, j1 = a;
+        for (var i = a; i <= b; i++) {
+          while (j0 < i && PL[i] - PL[j0 + 1] >= 10) j0++;
+          while (j1 < b && PL[j1] - PL[i] < 10) j1++;
+          if (PL[i] - PL[j0] < 10 || PL[j1] - PL[i] < 10) continue;
+          var t = (PL[i] - PL[j0]) / (PL[j1] - PL[j0]), d = Math.abs(PH[i] - (PH[j0] + (PH[j1] - PH[j0]) * t));
+          n++; sum += d; if (d > mx) mx = d; if (d > 0.15) big++;
+          if (i > a && PL[i] - PL[i - 1] > 0.5 && Math.abs(PH[i] - PH[i - 1]) / (PL[i] - PL[i - 1]) > 0.3) steep++;
+        } }
+      return { bumpMeanCm: +(100 * sum / n).toFixed(2), bumpMaxCm: +(100 * mx).toFixed(1), over15cm: big, steeper30pct: steep, n: n };
+    }, stepCar: stepCar, types: typeMeshes, renderer: renderer, scene: scene, view: function (y, p, d) { orbit.yaw = y; orbit.pitch = p; camDist = d; orbit.idle = -1e9; }, sigs: SIGS, others: others, car: car, keys: keys, place: placeOnRoad, warmAll: function () { for (var k = 0; k < 4; k++) { plan(car.x, car.z); while (queue.length) buildSome(1000); } plan(car.x, car.z); }, chunks: chunks, env: env, film: film, setWeather: setWeather, radio: Radio,
     stats: function () { return { edges: NE, points: PX ? PX.length : 0, buildings: BLD ? BLD.N : 0, signals: SIGS.length, chunks: chunks.size, queue: queue.length, calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; } };
 
   loadMsg.textContent = 'Loading the Hobart map…';
-  Promise.all(['terrain.png', 'land.png', 'ground.jpg', 'roads.png', 'buildings.png'].map(loadImage))
+  function loadData(url) {
+    return fetch(url).then(function (r) { if (!r.ok) throw new Error(url + ' ' + r.status); return r.text(); }).then(function (t) {
+      var s = atob(t.trim()), u = new Uint8Array(s.length);
+      for (var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+      if (!window.DecompressionStream) throw new Error('This browser is too old to unpack the map (needs DecompressionStream).');
+      return new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer();
+    });
+  }
+  Promise.all([loadData('terrain.txt'), loadData('land.txt'), loadImage('ground.jpg'), loadData('roads.txt'), loadData('buildings.txt')])
     .then(function (im) {
       loadMsg.textContent = 'Reading heights, streets and 152,000 buildings…';
       return new Promise(function (ok, bad) {
         setTimeout(function () {
           try {
             decodeLand(im[0], im[1], im[2]);
-            parseRoads(imageBytes(im[3])); roadHeights(); buildIndex(); averageOverlaps(); buildUrban();
-            parseBuildings(imageBytes(im[4])); bucketTrees(); setupSignals();
+            parseRoads(im[3]); roadHeights(); buildIndex(); averageOverlaps(); smoothNet(40); gaussEdges(16); bridges(); buildUrban();
+            parseBuildings(im[4]); bucketTrees(); setupSignals();
             ok();
           } catch (err) { bad(err); }
         }, 30);
