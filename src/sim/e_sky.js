@@ -5,21 +5,30 @@
   var hemi = new THREE.HemisphereLight(0xffffff, 0x77705f, 0.8); scene.add(hemi);
   var sun = new THREE.DirectionalLight(0xfff4e2, 1);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.camera.left = -12; sun.shadow.camera.right = 12; sun.shadow.camera.top = 12; sun.shadow.camera.bottom = -12;
-  sun.shadow.camera.near = 1; sun.shadow.camera.far = 120; sun.shadow.bias = -0.0008;
+  var SHR = 38, SHMAP = 2048, SHQ = 2;
+  function setShadows(q) {
+    SHQ = q; if (!q) return;
+    SHMAP = q === 2 ? 2048 : 1024; SHR = q === 2 ? 38 : 26;
+    sun.shadow.mapSize.set(SHMAP, SHMAP);
+    sun.shadow.camera.left = -SHR; sun.shadow.camera.right = SHR; sun.shadow.camera.top = SHR; sun.shadow.camera.bottom = -SHR;
+    sun.shadow.camera.updateProjectionMatrix();
+    if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  }
+  sun.shadow.mapSize.set(SHMAP, SHMAP);
+  sun.shadow.camera.left = -SHR; sun.shadow.camera.right = SHR; sun.shadow.camera.top = SHR; sun.shadow.camera.bottom = -SHR;
+  sun.shadow.camera.near = 1; sun.shadow.camera.far = 300; sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.035;
   scene.add(sun); scene.add(sun.target);
   var moon = new THREE.DirectionalLight(0x9fb4e0, 0); scene.add(moon); scene.add(moon.target);
 
   var skyU = {
     uSun: { value: new THREE.Vector3(0, 1, 0) }, uZen: { value: new THREE.Color() }, uHor: { value: new THREE.Color() }, uSunCol: { value: new THREE.Color() },
-    uCloud: { value: 0.2 }, uCloudDark: { value: 0 }, uTime: LIT.uTime, uNight: LIT.uNight
+    uCloud: { value: 0.2 }, uCloudDark: { value: 0 }, uTime: LIT.uTime, uNight: LIT.uNight, uEnvPass: { value: 0 }
   };
   var sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 32, 16), new THREE.ShaderMaterial({
     uniforms: skyU, side: THREE.BackSide, depthWrite: false, fog: false,
     vertexShader: 'varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: [
-      'uniform vec3 uSun; uniform vec3 uZen; uniform vec3 uHor; uniform vec3 uSunCol; uniform float uCloud; uniform float uCloudDark; uniform float uTime; uniform float uNight;',
+      'uniform vec3 uSun; uniform vec3 uZen; uniform vec3 uHor; uniform vec3 uSunCol; uniform float uCloud; uniform float uCloudDark; uniform float uTime; uniform float uNight; uniform float uEnvPass;',
       'varying vec3 vDir;',
       NOISE_GLSL,
       'float fbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 5; i++) { s += a * vnoise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; } return s; }',
@@ -27,9 +36,10 @@
       '  vec3 d = normalize(vDir); float y = d.y;',
       '  vec3 col = mix(uHor, uZen, pow(clamp(y, 0.0, 1.0), 0.45));',
       '  if (y < 0.0) col = uHor * (1.0 + y * 1.5);',
+      '  if (uEnvPass > 0.5 && y < 0.0) col = mix(uHor, uZen * 0.25 + vec3(0.05, 0.045, 0.04) * (1.0 - uNight), smoothstep(0.0, -0.2, y)) * 0.6;',
       '  float sd = max(dot(d, uSun), 0.0);',
       '  col += uSunCol * (pow(sd, 6.0) * 0.18 + pow(sd, 48.0) * 0.5) * (1.0 - uCloud * 0.6);',
-      '  col += uSunCol * smoothstep(0.99955, 0.9998, sd) * 18.0 * (1.0 - uCloud * 0.9);',
+      '  col += uSunCol * smoothstep(0.99955, 0.9998, sd) * 18.0 * (1.0 - uCloud * 0.9) * (1.0 - uEnvPass);',
       '  if (uNight > 0.02 && y > 0.0) {',
       '    vec2 sp = d.xz / (y + 0.35) * 260.0; vec2 cell = floor(sp);',
       '    float st = step(0.9965, hh(cell)) * smoothstep(0.35, 0.0, length(fract(sp) - 0.5));',
@@ -49,6 +59,20 @@
     ].join('\n')
   }));
   sky.frustumCulled = false; sky.renderOrder = -10; scene.add(sky);
+  /* image-based light: the sky (without its sun disc) prefiltered into an environment map every few seconds */
+  var envScene = new THREE.Scene(), envU = Object.assign({}, skyU, { uEnvPass: { value: 1 } });
+  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(100, 32, 16), new THREE.ShaderMaterial({ uniforms: envU, side: THREE.BackSide, depthWrite: false, vertexShader: sky.material.vertexShader, fragmentShader: sky.material.fragmentShader })));
+  var pmrem = new THREE.PMREMGenerator(renderer), envRT = null, envT = 99, envLast = -99, envKey = '';
+  function updateEnv(dt) {
+    var now = performance.now() / 1000; envT = now - envLast;
+    var key = Math.round(sdir.y * 60) + ':' + Math.round(W.cloud * 20) + ':' + Math.round(W.dark * 10) + ':' + Math.round(LIT.uNight.value * 20);
+    if (envT < 1.5 || (key === envKey && envT < 12)) return;
+    envLast = now; envKey = key;
+    var old = envRT;
+    envRT = pmrem.fromScene(envScene, 0, 0.1, 1000);
+    scene.environment = envRT.texture;
+    if (old) old.dispose();
+  }
 
   /* weather presets: cloud cover, cloud darkness, fog near/far, rain, snow, wind, wetness, snow lying everywhere */
   var WEATHERS = {
@@ -114,13 +138,16 @@
     scene.fog.near = W.fn; scene.fog.far = W.ff;
     var sunUp = sstep(-0.03, 0.12, e);
     sun.color.copy(sunc); sun.intensity = 1.35 * sunUp * (1 - 0.82 * W.cloud * (0.6 + 0.4 * W.dark));
-    sun.castShadow = sun.intensity > 0.12;
+    sun.castShadow = sun.intensity > 0.12 && SHQ > 0;
     hemi.color.copy(zen).lerp(hor, 0.5).multiplyScalar(1.25); hemi.groundColor.setRGB(0.25, 0.23, 0.2).multiplyScalar(0.35 + 0.65 * sstep(-0.1, 0.3, e));
     hemi.intensity = 0.3 + 0.6 * sstep(-0.15, 0.35, e) * (1 - 0.3 * W.dark) + 0.25 * W.cloud * sstep(0, 0.3, e);
     moon.intensity = 0.16 * night * (1 - W.cloud * 0.7);
-    water.material.color.copy(hor).multiplyScalar(0.22).lerp(C('#1d3f52'), 0.6).multiplyScalar(0.35 + 0.65 * sstep(-0.15, 0.2, e));
-    water.material.specular.copy(sunc).multiplyScalar(0.6 * (1 - W.cloud));
-    exposure = 0.92 + 1.3 * night + 0.25 * W.dark * (1 - night);
+    waterU.uSun.value.copy(sdir); waterU.uSunCol.value.copy(sunc).multiplyScalar(sunUp); waterU.uZen.value.copy(zen); waterU.uHor.value.copy(hor);
+    waterU.uFogC.value.copy(hor); waterU.uFogN.value = W.fn; waterU.uFogF.value = W.ff; waterU.uCloud.value = W.cloud; waterU.uWind.value = W.wind;
+    /* the sky now lights the scene through the environment map, so the hemisphere fill is lighter */
+    hemi.intensity *= scene.environment ? 0.55 : 1;
+    updateEnv(dt);
+    exposure = 0.92 + 0.85 * night + 0.25 * W.dark * (1 - night);
     return e;
   }
   function setWeather(name, fromAuto, instant) {

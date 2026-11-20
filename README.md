@@ -12,7 +12,7 @@ The simulator reads its map from the image files next to it, so serve the folder
     python3 -m http.server
     # then open http://localhost:8000/
 
-Controls: W A S D or the arrow keys to drive, Space for the handbrake, C for chase or driver view, R to get back on the road, M to switch the radio on or off, N for the next station, drag to look around. On a phone there are on-screen pedals. Time of day, the day cycle, weather and the film look are in the "Time & weather" panel.
+Controls: W A S D or the arrow keys to drive, Space for the handbrake, C for chase or driver view, R to get back on the road, F (held) to fill up at a pump, M to switch the radio on or off, N for the next station, drag to look around. On a phone there are on-screen pedals and a fill button. Time of day, the day cycle, weather and the film look are in the "Time & weather" panel; fuel use, sound, traffic, pedestrians and shadows are under "Options".
 
 ## What is in the world
 
@@ -25,6 +25,7 @@ Everything within 30 km of the Hobart GPO is generated in the browser as you dri
 | `land.txt` | Tree cover (low 4 bits) and water (bit 4) on a 20 m grid, classified from the same imagery |
 | `roads.txt` | About 3,000 km of OpenStreetMap streets, smoothed, with names, widths, one-way, bridge and footpath flags, plus 504 traffic signals and 3,700 mapped trees |
 | `buildings.txt` | 152,000 OpenStreetMap building footprints, each with a style, roof shape, pitch, roof and wall colour and height |
+| `extra.json` | OpenStreetMap fuel stations (79) and bus stops (1,888) |
 
 How each part is made:
 
@@ -33,18 +34,26 @@ How each part is made:
 - **Trees** come from OSM's mapped trees, tree cover read from the imagery, garden trees in built-up blocks, and street trees along footpaths.
 - **kunanyi / Mt Wellington** turns to dark brown and grey rock above the forest, with patchy snow on top. The snowline drops when it snows.
 - **Traffic lights** come from OSM signal nodes and run two-phase cycles; the traffic stops for them.
-- **Traffic** is 80 cars in seven simple period body types: sedan, wagon, ute, van, small car, fastback and truck.
-- **Time and weather:** the sun follows its real path over Hobart for today's date. Weather can be clear, overcast, rain, fog or snow, or changing. At night there are lit windows, street lamps, headlights and tail lights.
+- **Traffic** is up to 140 vehicles in fifteen generic 1970s and early-80s body styles, each lofted from cross-sections with its own glasshouse, chrome or rubber bumpers, round or square lamps and period paint: large sedan (some with vinyl roofs), wagon, ute, panel van, mid-size sedan, fastback coupe, small hatch, compact sedan, mini, early-80s sedan, people mover, four-wheel drive, taxi, delivery truck and city bus. None copies a real make and none carries a badge. They follow the road network, keep their distance, stop at red lights and stop when you hit them.
+- **Pedestrians** walk the footpaths, cross at corners, wait at bus stops and step out of the Sigma's way. Their arms and legs swing in the vertex shader. There are fewer of them at night and in the rain. The car passes through them; it does not collide with them.
+- **Collisions:** the Sigma collides with building footprints, petrol station islands and kiosks, bus shelters and other cars, with an impulse at the contact point, so a glancing blow spins it.
+- **Fuel:** the Sigma burns petrol from its engine power (brake-specific consumption plus idle) from a 60 L tank, so about 7.5 L/100 km at a steady 60 km/h. A multiplier (1x, 5x by default, 20x) makes the tank last a sensible time. When it runs dry the engine sputters and stops, and you can call a tow to the nearest station. The 79 service stations are rebuilt as late-70s forecourts with generic signage: a concrete pad, a canopy, two pump islands, a kiosk and a roadside price sign (20.9 cents a litre). Hold F beside a pump to fill.
+- **Bus stops** have a pole and sign, and about half have a shelter.
+- **Materials:** physically based shading throughout, lit by the sky through an environment map that is rebuilt as the light changes. Walls get brick courses, weatherboards, sandstone blocks, render or concrete panels; roofs get corrugated iron, tiles or slate; windows have frames, sills, curtains and reflections; houses get verandahs, chimneys and front fences. Roads have wheel tracks, patches, cracks and puddles in the wet, and power poles with wires run along suburban streets. The ground in the dense centre is paved.
+- **Shadows:** a 2048-pixel shadow map covers about 76 m around the car and is snapped to its texels, so edges don't crawl.
+- **Time and weather:** the sun follows its real path over Hobart for today's date. Weather can be clear, overcast, rain, fog or snow, or changing. At night there are lit windows, street lamps, lit forecourts, headlights and tail lights on every car.
 - **Film look:** warm faded colour grading, halation round bright lights, grain and vignette, applied as a post-process.
 - **Radio:** five stations of original music composed live in the browser in 70s styles (lounge, disco, soft rock, funk, glam). No recordings are used.
 
-The Sigma has a four-speed gearbox, takes about 17 s to reach 100 km/h, and is limited to 100 km/h.
+**Car physics.** The Sigma runs on a planar vehicle model with tyre slip curves and a friction circle per axle, weight transfer, a four-speed gearbox with automatic shifts and a slipping clutch at launch, engine braking, and a spring and damper at each corner that drives heave, pitch and roll and feeds the tyre loads. The steering wheel winds on over about a second and returns a little faster, and full lock shrinks with speed. Measured on the flat: 0-100 km/h in about 12 s, 100-0 braking in about 50 m with about 2 degrees of nose dive, about 0.75 g of grip on dry bitumen with about 6 degrees of body roll. Grip drops on footpaths, grass, in the wet and on snow. Top speed is limited to 100 km/h.
+
+**Sound.** The engine is synthesised from its firing frequency through a throttle-opened filter, with intake noise, tyre squeal, road and wind noise, rain and the thump of a collision.
 
 ## Source
 
 - `src/car.js` is the car model and viewer.
-- `src/sim/` holds the simulator in parts (core, world, city, cars, sky, radio, main) plus its page markup. The car model is spliced in after the core.
-- `tools/` has the scripts that fetched and packed the data. `qb.py` fetches OSM buildings and points, `s2tiles.py` and `mosaic.py` fetch the imagery, `land.py` classifies it, and `prep4.py` packs roads, signals, trees and buildings.
+- `src/sim/` holds the simulator in parts (core, world, city, cars and traffic, sky, radio, pedestrians, fuel and street furniture, sound, main) plus its page markup. The car model is spliced in after the core. `tools/build6.py` assembles them into `index.html`.
+- `tools/` has the scripts that fetched and packed the data. `qb.py` fetches OSM buildings and points, `s2tiles.py` and `mosaic.py` fetch the imagery, `land.py` classifies it, and `prep4.py` packs roads, signals, trees and buildings, and `extra.py` extracts fuel stations and bus stops.
 
 ## Credits
 

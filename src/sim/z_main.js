@@ -121,10 +121,13 @@
     if (ev.code === 'KeyR') placeOnRoad(car.x, car.z);
     if (ev.code === 'KeyM') Radio.toggle();
     if (ev.code === 'KeyN') Radio.seek(1);
+    if (ev.code === 'KeyT' && car.fuel <= 0) tow();
+    Sound.wake();
     if (/^Arrow|Space/.test(ev.code)) ev.preventDefault();
   });
   window.addEventListener('keyup', function (ev) { keys[ev.code] = false; });
   window.addEventListener('blur', function () { for (var k in keys) keys[k] = false; });
+  window.addEventListener('pointerdown', function () { Sound.wake(); }, true);
   canvas.addEventListener('pointerdown', function (ev) { orbit.drag = true; orbit.px = ev.clientX; orbit.py = ev.clientY; canvas.setPointerCapture(ev.pointerId); canvas.focus(); });
   canvas.addEventListener('pointermove', function (ev) {
     if (!orbit.drag) return;
@@ -167,18 +170,31 @@
   function panelToggle(btn, panel) {
     $(btn).addEventListener('click', function () {
       var open = $(panel).hidden;
-      ['envPanel', 'radioPanel'].forEach(function (p) { $(p).hidden = true; });
-      ['envBtn', 'radioBtn'].forEach(function (b) { $(b).setAttribute('aria-expanded', 'false'); });
+      ['envPanel', 'radioPanel', 'optPanel'].forEach(function (p) { $(p).hidden = true; });
+      ['envBtn', 'radioBtn', 'optBtn'].forEach(function (b) { $(b).setAttribute('aria-expanded', 'false'); });
       $(panel).hidden = !open; $(btn).setAttribute('aria-expanded', String(open));
     });
   }
-  panelToggle('envBtn', 'envPanel'); panelToggle('radioBtn', 'radioPanel');
+  panelToggle('envBtn', 'envPanel'); panelToggle('radioBtn', 'radioPanel'); panelToggle('optBtn', 'optPanel');
   $('radioPower').addEventListener('click', function () { Radio.toggle(); });
   $('seekDn').addEventListener('click', function () { Radio.seek(-1); });
   $('seekUp').addEventListener('click', function () { Radio.seek(1); });
   $('tune').addEventListener('input', function () { Radio.tune(+this.value); });
   $('vol').addEventListener('input', function () { Radio.volume(+this.value); });
   Radio.label();
+  (function () {
+    var b = $('fillBtn');
+    function down(ev) { if (b.dataset.tow) { tow(); } else fill.btn = 1; b.classList.add('on'); ev.preventDefault(); }
+    function up() { fill.btn = 0; b.classList.remove('on'); }
+    b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up); b.addEventListener('pointercancel', up);
+    b.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') down(ev); });
+    b.addEventListener('keyup', up);
+  })();
+  $('fuelSel').addEventListener('change', function () { fuelFactor = +this.value; });
+  $('pedSel').addEventListener('change', function () { pedCount = +this.value; });
+  $('shadowSel').addEventListener('change', function () { setShadows(+this.value); });
+  $('soundBtn').addEventListener('click', function () { var on = Sound.toggle(); this.setAttribute('aria-pressed', String(on)); this.textContent = on ? 'Sound on' : 'Sound off'; canvas.focus(); });
+  $('trafficSel').addEventListener('change', function () { trafficCount = +this.value; });
 
   /* ==========================================================
      HUD: two small analogue dials, the street, a map
@@ -211,15 +227,35 @@
     gg.strokeStyle = '#ff6a1a'; gg.lineWidth = 2.2; gg.lineCap = 'round'; gg.stroke();
     gg.beginPath(); gg.arc(cx, cy, r * 0.09, 0, Math.PI * 2); gg.fillStyle = '#2b2d2f'; gg.fill();
   }
-  var shownKmh = 0, shownRpm = 800;
+  var shownKmh = 0, shownRpm = 800, shownFuel = 0.3;
+  /* a small fuel gauge between the two big dials, E to F, with a low-fuel lamp */
+  function fuelDial(cx, cy, r, f) {
+    var a0 = Math.PI * 1.15, a1 = Math.PI * 1.85;
+    gg.beginPath(); gg.arc(cx, cy, r + 3, Math.PI, 0); gg.lineTo(cx + r + 3, cy + r * 0.32); gg.lineTo(cx - r - 3, cy + r * 0.32); gg.closePath();
+    var grd = gg.createLinearGradient(cx - r, cy - r, cx + r, cy + r); grd.addColorStop(0, '#e9ecee'); grd.addColorStop(0.5, '#7d8286'); grd.addColorStop(1, '#d6d9db');
+    gg.fillStyle = grd; gg.fill();
+    gg.beginPath(); gg.arc(cx, cy, r + 1, Math.PI, 0); gg.lineTo(cx + r + 1, cy + r * 0.3 - 2); gg.lineTo(cx - r - 1, cy + r * 0.3 - 2); gg.closePath(); gg.fillStyle = '#121314'; gg.fill();
+    gg.beginPath(); gg.arc(cx, cy, r - 4, a0, a0 + (a1 - a0) * 0.12); gg.strokeStyle = '#c0392b'; gg.lineWidth = 2.5; gg.stroke();
+    for (var k = 0; k <= 4; k++) { var a = a0 + (a1 - a0) * k / 4; gg.beginPath(); gg.moveTo(cx + Math.cos(a) * (r - 2), cy + Math.sin(a) * (r - 2)); gg.lineTo(cx + Math.cos(a) * (r - (k % 2 ? 6 : 9)), cy + Math.sin(a) * (r - (k % 2 ? 6 : 9))); gg.strokeStyle = '#ece7da'; gg.lineWidth = k % 2 ? 0.8 : 1.5; gg.stroke(); }
+    gg.fillStyle = '#ece7da'; gg.font = '600 ' + Math.max(7, r * 0.3) + 'px "Space Grotesk", system-ui, sans-serif'; gg.textAlign = 'center'; gg.textBaseline = 'middle';
+    gg.fillText('E', cx + Math.cos(a0) * (r - 15), cy + Math.sin(a0) * (r - 15) + 1); gg.fillText('F', cx + Math.cos(a1) * (r - 15), cy + Math.sin(a1) * (r - 15) + 1);
+    var low = car.fuel < TANK * 0.12;
+    gg.fillStyle = low && (simTime % 1.2 < 0.8) ? '#ffb020' : '#3a3226'; gg.font = '600 ' + Math.max(6, r * 0.24) + 'px Inter, system-ui, sans-serif'; gg.fillText('FUEL', cx, cy - r * 0.38);
+    var an = a0 + (a1 - a0) * clamp(f, 0, 1);
+    gg.beginPath(); gg.moveTo(cx, cy); gg.lineTo(cx + Math.cos(an) * (r - 4), cy + Math.sin(an) * (r - 4)); gg.strokeStyle = '#ff6a1a'; gg.lineWidth = 2; gg.lineCap = 'round'; gg.stroke();
+    gg.beginPath(); gg.arc(cx, cy, r * 0.13, 0, Math.PI * 2); gg.fillStyle = '#2b2d2f'; gg.fill();
+  }
   function drawGauges(dt) {
     if (!GD) sizeGauges();
     var w = gc.clientWidth, h = gc.clientHeight, r = h / 2 - 2;
+    if (r < 10) return;
     shownKmh += (Math.abs(car.v) * 3.6 - shownKmh) * Math.min(1, dt * 8);
     shownRpm += (car.rpm - shownRpm) * Math.min(1, dt * 10);
     gg.clearRect(0, 0, w, h);
     dial(r + 2, h / 2, r, shownKmh, 160, 20, 10, 20, function (k) { return k; }, 0, 'km/h');
     dial(w - r - 2, h / 2, r, shownRpm / 1000, 7, 1, 0.5, 1, function (k) { return k; }, 6, 'x1000 rpm');
+    shownFuel += (car.fuel / TANK - shownFuel) * Math.min(1, dt * 1.5);
+    fuelDial(w / 2, h * 0.64, r * 0.48, shownFuel);
     gg.fillStyle = '#ffb347'; gg.font = '600 ' + Math.round(r * 0.22) + 'px "Space Grotesk", system-ui, sans-serif'; gg.textAlign = 'center'; gg.textBaseline = 'middle';
     gg.fillText(car.v < -0.2 ? 'R' : String(car.gear), w - r - 2, h / 2 + r * 0.7);
   }
@@ -242,6 +278,7 @@
       }
       mg.strokeStyle = pass ? '#e8a54a' : '#9c978c'; mg.lineWidth = pass ? 2.4 : 1.1; mg.stroke();
     }
+    FUEL.forEach(function (st) { var px = st.x * s + ox, pz = st.z * s + oz; if (px > -6 && pz > -6 && px < MMS + 6 && pz < MMS + 6) { mg.fillStyle = '#1d1a16'; mg.fillRect(px - 4, pz - 4, 8, 8); mg.fillStyle = '#ffd25a'; mg.fillRect(px - 3, pz - 3, 6, 6); } });
     mg.fillStyle = '#9fd0e8';
     others.forEach(function (o) { if (o.i >= 0) mg.fillRect(o.x * s + ox - 1.5, o.z * s + oz - 1.5, 3, 3); });
     activeSigs.forEach(function (sg) { mg.fillStyle = '#d24a3a'; mg.fillRect(sg.x * s + ox - 1.5, sg.z * s + oz - 1.5, 3, 3); });
@@ -263,6 +300,11 @@
     $('info').textContent = COMPASS[Math.round(a / (Math.PI / 4)) % 8] + ' · ' + Math.round(car.y) + ' m · ' + hhmm(env.hour);
     if (document.activeElement !== $('timeSl')) { $('timeSl').value = env.hour; $('timeLbl').textContent = hhmm(env.hour); }
     drawMap();
+    var pr = fuelPrompt(), pe = $('prompt');
+    if (pr) {
+      pe.hidden = false; $('promptTxt').textContent = pr.text;
+      var b = $('fillBtn'); b.hidden = !pr.btn; if (pr.btn) b.textContent = pr.btn; b.dataset.tow = pr.tow ? '1' : '';
+    } else pe.hidden = true;
   }
   function resize() {
     var w = stage.clientWidth, h = stage.clientHeight;
@@ -276,7 +318,8 @@
   /* ==========================================================
      START-UP AND MAIN LOOP
      ========================================================== */
-  var running = false, last = 0, lampT = 0, headDir = new THREE.Vector3();
+  var running = false, last = 0, lampT = 0, headDir = new THREE.Vector3(), shake = 0;
+  var shF = new THREE.Vector3(), shR = new THREE.Vector3(), shU = new THREE.Vector3(), shC = new THREE.Vector3();
   function warm(done) {
     plan(car.x, car.z);
     var total = queue.length;
@@ -294,13 +337,26 @@
     if (needWarm) { needWarm = false; plan(car.x, car.z); buildSome(500); plan(car.x, car.z); }
     var e = updateSky(dt);
     stepCar(dt);
+    stepFuel(dt);
     stepTraffic(dt);
+    stepPeds(dt);
+    finishBlobs();
+    Sound.update(dt);
     updateSignals(simTime);
     if (Math.hypot(car.x - lastPlan.x, car.z - lastPlan.z) > 14 || (pending && !queue.length)) { plan(car.x, car.z); pending = false; }
     if (queue.length) { buildSome(6); pending = true; }
     stepCamera(dt);
+    /* a jolt on impact */
+    shake = Math.max(shake * Math.exp(-dt * 7), car.impact > 1 ? Math.min(0.25, car.impact * 0.02) : 0);
+    if (shake > 0.002) { camera.position.x += (Math.random() - 0.5) * shake; camera.position.y += (Math.random() - 0.5) * shake; camera.position.z += (Math.random() - 0.5) * shake; }
     /* sun and moon follow the car so its shadow stays sharp */
-    sun.position.set(car.x + sdir.x * 60, car.y + Math.max(sdir.y, 0.05) * 60, car.z + sdir.z * 60); sun.target.position.set(car.x, car.y, car.z);
+    /* the shadow box is snapped to whole shadow-map texels so edges do not crawl as the car moves */
+    shF.set(-sdir.x, -Math.max(sdir.y, 0.05), -sdir.z).normalize(); shR.crossVectors(shF, yAxis).normalize(); shU.crossVectors(shR, shF);
+    var texel = 2 * SHR / SHMAP, cfx = car.x + Math.cos(car.h) * 8, cfz = car.z - Math.sin(car.h) * 8;
+    shC.set(cfx, car.y, cfz);
+    var pr = shC.dot(shR), pu = shC.dot(shU);
+    shC.addScaledVector(shR, Math.round(pr / texel) * texel - pr).addScaledVector(shU, Math.round(pu / texel) * texel - pu);
+    sun.target.position.copy(shC); sun.position.copy(shC).addScaledVector(shF, -150);
     moon.position.set(car.x - 30, car.y + 50, car.z + 20); moon.target.position.set(car.x, car.y, car.z);
     /* headlights at dusk, at night and in rain or fog */
     var lightsOn = LIT.uNight.value > 0.05 || W.rain > 0.5 || W.ff < 1200;
@@ -342,7 +398,7 @@
           if (i > a && PL[i] - PL[i - 1] > 0.5 && Math.abs(PH[i] - PH[i - 1]) / (PL[i] - PL[i - 1]) > 0.3) steep++;
         } }
       return { bumpMeanCm: +(100 * sum / n).toFixed(2), bumpMaxCm: +(100 * mx).toFixed(1), over15cm: big, steeper30pct: steep, n: n };
-    }, stepCar: stepCar, types: typeMeshes, renderer: renderer, scene: scene, view: function (y, p, d) { orbit.yaw = y; orbit.pitch = p; camDist = d; orbit.idle = -1e9; }, sigs: SIGS, others: others, car: car, keys: keys, place: placeOnRoad, warmAll: function () { for (var k = 0; k < 4; k++) { plan(car.x, car.z); while (queue.length) buildSome(1000); } plan(car.x, car.z); }, chunks: chunks, env: env, film: film, setWeather: setWeather, radio: Radio,
+    }, stepCar: stepCar, types: typeMeshes, fuel: FUEL, stops: STOPS_ALL, peds: peds, fill: fill, tow: tow, setFuelFactor: function (f) { fuelFactor = f; }, setPeds: function (n) { pedCount = n; }, carG: carG, dbg: DBG, net: function () { return { PNX: PNX, PNZ: PNZ, PE: PE, ESW: ESW, PX: PX, PZ: PZ, PH: PH, PL: PL, ES: ES, ECL: ECL, EF: EF, NE: NE, EW: EW }; }, setTraffic: function (n) { trafficCount = n; }, placeAt: placeCarAt, TYPES: TYPES, renderer: renderer, scene: scene, view: function (y, p, d) { orbit.yaw = y; orbit.pitch = p; camDist = d; orbit.idle = -1e9; }, sigs: SIGS, others: others, car: car, keys: keys, place: placeOnRoad, warmAll: function () { for (var k = 0; k < 4; k++) { plan(car.x, car.z); while (queue.length) buildSome(1000); } plan(car.x, car.z); }, chunks: chunks, env: env, film: film, setWeather: setWeather, radio: Radio,
     stats: function () { return { edges: NE, points: PX ? PX.length : 0, buildings: BLD ? BLD.N : 0, signals: SIGS.length, chunks: chunks.size, queue: queue.length, calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; } };
 
   loadMsg.textContent = 'Loading the Hobart map…';
@@ -354,15 +410,17 @@
       return new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer();
     });
   }
-  Promise.all([loadData('terrain.txt'), loadData('land.txt'), loadImage('ground.jpg'), loadData('roads.txt'), loadData('buildings.txt')])
+  var extraP = fetch('extra.json').then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; });
+  Promise.all([loadData('terrain.txt'), loadData('land.txt'), loadImage('ground.jpg'), loadData('roads.txt'), loadData('buildings.txt'), extraP])
     .then(function (im) {
-      loadMsg.textContent = 'Reading heights, streets and 152,000 buildings…';
+      loadMsg.textContent = 'Reading heights, streets, 152,000 buildings and 79 petrol stations…';
       return new Promise(function (ok, bad) {
         setTimeout(function () {
           try {
             decodeLand(im[0], im[1], im[2]);
             parseRoads(im[3]); roadHeights(); buildIndex(); averageOverlaps(); smoothNet(40); gaussEdges(16); bridges(); buildUrban();
             parseBuildings(im[4]); bucketTrees(); setupSignals();
+            setupFuel(im[5] || {});
             ok();
           } catch (err) { bad(err); }
         }, 30);

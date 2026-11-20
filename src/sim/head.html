@@ -51,7 +51,11 @@
   #station { margin-left: auto; color: var(--fg); font-weight: 600; font-size: 12px; text-align: right; }
   .note { color: var(--muted); font-size: 11px; line-height: 1.4; margin: 0; }
   .gaugebox { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
-  #gauges { width: 232px; height: 112px; display: block; }
+  #gauges { width: 300px; height: 112px; display: block; }
+  .prompt { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(132px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; max-width: min(520px, calc(100vw - 32px)); box-sizing: border-box; z-index: 2; }
+  #promptTxt { font-size: 13px; font-weight: 500; line-height: 1.35; font-variant-numeric: tabular-nums; }
+  #fillBtn { flex: none; background: var(--mustard); color: #1d1209; border-color: transparent; font-weight: 600; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #fillBtn.on { background: var(--accent); }
   .bl { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); flex-direction: column; align-items: flex-start; max-width: calc(50vw - 140px); }
   .help { padding: 7px 11px; font-size: 12px; color: var(--muted); line-height: 1.5; }
   .help b { color: var(--fg); font-weight: 600; }
@@ -64,10 +68,11 @@
   @media (pointer: coarse) {
     .pads { display: flex; } .help { display: none; }
     .gaugebox { bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
-    #gauges { width: 180px; height: 88px; }
+    #gauges { width: 232px; height: 88px; }
+    .prompt { bottom: calc(206px + env(safe-area-inset-bottom, 0px)); }
     .bl { bottom: calc(205px + env(safe-area-inset-bottom, 0px)); max-width: 60vw; }
   }
-  @media (max-width: 560px) { #map { width: 112px; height: 112px; } .tr { width: 190px; } #gauges { width: 180px; height: 88px; } .credit { font-size: 9.5px; } }
+  @media (max-width: 560px) { #map { width: 112px; height: 112px; } .tr { width: 190px; } #gauges { width: 232px; height: 88px; } .prompt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); } .credit { font-size: 9.5px; } }
   @media (max-width: 560px) and (pointer: fine) { .bl { max-width: 60vw; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); } }
   #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 5; text-align: center; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
   #loading h2 { font: 600 28px/1.2 var(--display); margin: 0 0 8px; color: var(--mustard); text-wrap: balance; }
@@ -84,7 +89,8 @@
   </div>
 </div>
 
-<div class="gaugebox"><canvas id="gauges" aria-label="Speedometer and tachometer"></canvas></div>
+<div class="gaugebox"><canvas id="gauges" aria-label="Speedometer, fuel gauge and tachometer"></canvas></div>
+<div class="panel prompt" id="prompt" hidden role="status"><span id="promptTxt"></span><button class="btn" id="fillBtn" hidden>Hold to fill</button></div>
 
 <div class="hud tr">
   <div class="panel mapwrap"><canvas id="map" aria-label="Street map around the car"></canvas></div>
@@ -96,6 +102,7 @@
   <div class="row">
     <button class="btn" id="envBtn" aria-expanded="false" aria-controls="envPanel">Time &amp; weather</button>
     <button class="btn" id="radioBtn" aria-expanded="false" aria-controls="radioPanel">Radio</button>
+    <button class="btn" id="optBtn" aria-expanded="false" aria-controls="optPanel">Options</button>
   </div>
   <div class="panel sheet" id="envPanel" hidden>
     <h2>Time &amp; weather</h2>
@@ -126,6 +133,33 @@
     <label class="chk"><input type="checkbox" id="filmChk" checked> 70s film colour</label>
     <div class="field"><label for="grainSl">Grain</label><input type="range" id="grainSl" min="0" max="1.5" step="0.05" value="0.6"></div>
   </div>
+  <div class="panel sheet" id="optPanel" hidden>
+    <h2>Car</h2>
+    <div class="field">
+      <label for="fuelSel">Fuel use</label>
+      <select id="fuelSel">
+        <option value="1">Real (a tank lasts hours)</option>
+        <option value="5" selected>5&times; (a tank lasts about 40 min)</option>
+        <option value="20">20&times; (watch the gauge)</option>
+      </select>
+    </div>
+    <button class="btn" id="soundBtn" aria-pressed="true">Sound on</button>
+    <h2>Town</h2>
+    <div class="field">
+      <label for="trafficSel">Traffic</label>
+      <select id="trafficSel"><option value="40">Quiet</option><option value="90" selected>Normal</option><option value="140">Busy</option></select>
+    </div>
+    <div class="field">
+      <label for="pedSel">People on the footpaths</label>
+      <select id="pedSel"><option value="0">None</option><option value="120">A few</option><option value="260" selected>Normal</option><option value="420">Busy</option></select>
+    </div>
+    <h2>Picture</h2>
+    <div class="field">
+      <label for="shadowSel">Shadows</label>
+      <select id="shadowSel"><option value="2" selected>Sharp, far reaching</option><option value="1">Lighter (faster)</option><option value="0">Off (fastest)</option></select>
+    </div>
+    <p class="note">Traffic is generic 1970s and early-80s body styles: big sedans and wagons, utes, panel vans, small hatches, minis, 4WDs, taxis, trucks and buses.</p>
+  </div>
   <div class="panel sheet" id="radioPanel" hidden>
     <h2>Radio</h2>
     <div class="radioface"><span id="freq">96.9</span><span class="mhz">MHz</span><span id="station">Off</span></div>
@@ -140,7 +174,7 @@
 </div>
 
 <div class="hud bl">
-  <div class="panel help"><b>W A S D</b> or <b>arrows</b> drive &middot; <b>Space</b> handbrake &middot; <b>C</b> view &middot; <b>R</b> back on road &middot; <b>M</b> radio &middot; <b>N</b> next station &middot; drag to look</div>
+  <div class="panel help"><b>W A S D</b> or <b>arrows</b> drive &middot; <b>Space</b> handbrake &middot; <b>C</b> view &middot; <b>R</b> back on road &middot; <b>F</b> fill up at a pump &middot; <b>M</b> radio &middot; <b>N</b> next station &middot; drag to look</div>
   <div class="credit">Streets and buildings &copy; OpenStreetMap contributors &middot; Heights: Mapzen terrain tiles &middot; Tree cover and water: Sentinel-2 cloudless by EOX (Copernicus Sentinel data 2016)</div>
 </div>
 

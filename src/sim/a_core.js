@@ -56,15 +56,35 @@
     '    vec4 L = uLamps[i];',
     '    vec3 v = L.xyz - p; float d2 = dot(v, v);',
     '    float ndl = max(dot(n, v * inversesqrt(d2 + 0.01)), 0.0);',
-    '    acc += vec3(1.0, 0.70, 0.40) * L.w * ndl * 70.0 / (d2 + 14.0);',
+    '    acc += vec3(1.0, 0.70, 0.40) * L.w * ndl * 42.0 / (d2 + 7.0) * (1.0 - smoothstep(500.0, 2000.0, d2));',
     '  }',
     '  vec3 hv = p - uHeadPos; float hd = length(hv) + 0.01; vec3 hdir = hv / hd;',
     '  float cone = smoothstep(0.82, 0.965, dot(hdir, uHeadDir));',
     '  acc += vec3(1.0, 0.92, 0.75) * uHeadOn * cone * max(dot(n, -hdir), 0.0) * 260.0 / (hd * hd + 8.0);',
     '  return acc * uNight * (1.0 + 0.8 * uWet);',
+    '}',
+    '/* glints of street lamps and headlights off a glossy (wet) surface */',
+    'vec3 nightSpec(vec3 p, vec3 n, vec3 v, float rough){',
+    '  if (uNight < 0.01) return vec3(0.0);',
+    '  float sh = 2.0 / max(rough * rough, 0.002); vec3 acc = vec3(0.0);',
+    '  for (int i = 0; i < ' + NL + '; i++) {',
+    '    vec4 L = uLamps[i]; vec3 l = L.xyz - p; float d2 = dot(l, l); l *= inversesqrt(d2 + 0.01);',
+    '    vec3 h = normalize(l + v); acc += vec3(1.0, 0.7, 0.4) * L.w * pow(max(dot(n, h), 0.0), sh) * (sh + 2.0) * 0.06 * 40.0 / (d2 + 30.0);',
+    '  }',
+    '  return acc * uNight;',
     '}'
   ].join('\n');
-  /* adds world position/normal varyings and night lighting to a Lambert material, plus optional extra code */
+  /* shared helpers for procedural surface detail: value noise, a world-space bump that tilts the view-space normal,
+     and the distance at which fine detail fades out so it never shimmers */
+  var DETAIL_GLSL = [
+    'float dh1(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }',
+    'float dnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(dh1(i), dh1(i + vec2(1, 0)), f.x), mix(dh1(i + vec2(0, 1)), dh1(i + vec2(1, 1)), f.x), f.y); }',
+    'float dfbm(vec2 p){ return dnoise(p) * 0.5 + dnoise(p * 2.07 + 3.1) * 0.25 + dnoise(p * 4.13 + 7.7) * 0.125; }',
+    '/* tilt a view-space normal by world-space slopes gx, gy along world tangents T and B */',
+    'vec3 bumpN(vec3 nV, vec3 T, vec3 B, float gx, float gy){ vec3 tv = normalize((viewMatrix * vec4(T, 0.0)).xyz); vec3 bv = normalize((viewMatrix * vec4(B, 0.0)).xyz); return normalize(nV - tv * gx - bv * gy); }',
+    'float detailFade(float near, float far){ return 1.0 - smoothstep(near, far, length(vWP - cameraPosition)); }'
+  ].join('\n');
+  /* adds world position/normal varyings and night lighting to a Lambert or Standard material, plus optional extra code */
   function litMaterial(mat, o) {
     o = o || {};
     mat.onBeforeCompile = function (sh) {
@@ -79,8 +99,10 @@
         'vWP = (modelMatrix * wp4).xyz; vWN = normalize(mat3(modelMatrix) * wn);',
         o.vmain || ''
       ].join('\n'));
-      var fs = 'varying vec3 vWP; varying vec3 vWN;\n' + LIGHT_GLSL + '\n' + (o.fhead || '') + sh.fragmentShader;
+      var fs = 'varying vec3 vWP; varying vec3 vWN;\n' + LIGHT_GLSL + '\n' + DETAIL_GLSL + '\n' + (o.fhead || '') + sh.fragmentShader;
       if (o.color) fs = fs.replace('#include <color_fragment>', '#include <color_fragment>\n' + o.color);
+      if (o.rough) fs = fs.replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n' + o.rough);
+      if (o.normal) fs = fs.replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + o.normal);
       fs = fs.replace('#include <tonemapping_fragment>', (o.pre || '') + '\n gl_FragColor.rgb += diffuseColor.rgb * nightLight(vWP, normalize(vWN));\n' + (o.post || '') + '\n#include <tonemapping_fragment>');
       sh.fragmentShader = fs;
     };
@@ -419,9 +441,9 @@
     if (coreH < 1e8) return Math.min(coreH, bestH);
     return bestH;
   }
-  var G = { onRoad: false, e: -1 };
+  var G = { onRoad: false, e: -1, surf: 0 };
   function carGround(x, z, refY) {
-    var r = 9, bestS = 1e9, bh = 0, be = -1;
+    var r = 9, bestS = 1e9, bh = 0, be = -1, fpS = 1e9, fpH = 0;
     var x0 = Math.max(0, ((x - r + HALF) / GC) | 0), x1 = Math.min(GN - 1, ((x + r + HALF) / GC) | 0);
     var z0 = Math.max(0, ((z - r + HALF) / GC) | 0), z1 = Math.min(GN - 1, ((z + r + HALF) / GC) | 0);
     for (var cz = z0; cz <= z1; cz++) for (var cx = x0; cx <= x1; cx++) {
@@ -431,14 +453,55 @@
         var t = ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1);
         t = t < 0 ? 0 : t > 1 ? 1 : t;
         var ex = ax + dx * t - x, ez = az + dz * t - z, d = Math.sqrt(ex * ex + ez * ez), e = PE[i];
-        if (d > EW[e] * 0.5 + 0.5) continue;
-        var h = PH[i] + (PH[i + 1] - PH[i]) * t, s = refY === null ? d : Math.abs(h - refY);
+        var hw = EW[e] * 0.5, h = PH[i] + (PH[i + 1] - PH[i]) * t;
+        if (d > hw + 0.25) {
+          /* footpath: a kerb's height above the road, except where the footpath stops short of a junction */
+          if (ESW[e] && !PB[i] && d < hw + SWW + 0.1) {
+            var jx = PX[i] + dx * t, jz = PZ[i] + dz * t;
+            if (Math.hypot(jx - VX[EA[e]], jz - VZ[EA[e]]) > VTRIM[EA[e]] && Math.hypot(jx - VX[EB[e]], jz - VZ[EB[e]]) > VTRIM[EB[e]]) {
+              var sf = refY === null ? d : Math.abs(h - refY);
+              if (sf < fpS) { fpS = sf; fpH = h + KERB; }
+            }
+          }
+          continue;
+        }
+        var s = refY === null ? d : Math.abs(h - refY);
         if (s < bestS) { bestS = s; bh = h; be = e; }
       }
     }
-    if (be >= 0 && (refY === null || bestS < 5)) { G.onRoad = true; G.e = be; return bh + 0.03; }
+    if (be >= 0 && (refY === null || bestS < 5)) { G.onRoad = true; G.e = be; G.surf = 0; return bh + 0.03; }
     G.onRoad = false; G.e = -1;
-    return terrainH(x, z, 4);
+    if (fpS < 5) { G.surf = 1; return fpH; }
+    G.surf = 2;
+    return padAdjust(x, z, terrainH(x, z, 4));
+  }
+  /* flat forecourts (fuel stations): ground inside a pad is levelled to it, blending out over 8 m */
+  var PADS = new Map();
+  function addPad(p) {
+    for (var dz = -1; dz <= 1; dz++) for (var dx = -1; dx <= 1; dx++) {
+      var k = clamp((((p.z + HALF) / 256) | 0) + dz, 0, 239) * 240 + clamp((((p.x + HALF) / 256) | 0) + dx, 0, 239);
+      if (!PADS.has(k)) PADS.set(k, []);
+      if (PADS.get(k).indexOf(p) < 0) PADS.get(k).push(p);
+    }
+  }
+  function padAdjust(x, z, h) {
+    var list = PADS.get(clamp(((z + HALF) / 256) | 0, 0, 239) * 240 + clamp(((x + HALF) / 256) | 0, 0, 239));
+    if (!list) return h;
+    for (var i = 0; i < list.length; i++) {
+      var p = list[i], rx = x - p.x, rz = z - p.z, u = Math.abs(rx * p.tx + rz * p.tz) - p.hl, v = Math.abs(-rx * p.tz + rz * p.tx) - p.hd;
+      var d = Math.max(u, v, 0);
+      if (d < 8) h = lerp(p.y - 0.06, h, sstep(0, 8, d));
+    }
+    return h;
+  }
+  function inPad(x, z, m) {
+    var list = PADS.get(clamp(((z + HALF) / 256) | 0, 0, 239) * 240 + clamp(((x + HALF) / 256) | 0, 0, 239));
+    if (!list) return false;
+    for (var i = 0; i < list.length; i++) {
+      var p = list[i], rx = x - p.x, rz = z - p.z;
+      if (Math.abs(rx * p.tx + rz * p.tz) < p.hl + m && Math.abs(-rx * p.tz + rz * p.tx) < p.hd + m) return true;
+    }
+    return false;
   }
   /* how built-up each 256 m square is */
   var URB = null;
