@@ -631,8 +631,24 @@
     return bestH;
   }
   var G = { onRoad: false, e: -1, surf: 0 };
+  function groundCands(x, z, refY) {
+    var out = [], r = 9;
+    var x0 = Math.max(0, ((x - r + HALF) / GC) | 0), x1 = Math.min(GN - 1, ((x + r + HALF) / GC) | 0);
+    var z0 = Math.max(0, ((z - r + HALF) / GC) | 0), z1 = Math.min(GN - 1, ((z + r + HALF) / GC) | 0);
+    for (var cz = z0; cz <= z1; cz++) for (var cx = x0; cx <= x1; cx++) {
+      var c = cz * GN + cx;
+      for (var k = CS[c], ke = CS[c + 1]; k < ke; k++) {
+        var i = CI[k], ax = PX[i], az = PZ[i], dx = PX[i + 1] - ax, dz = PZ[i + 1] - az;
+        var t = ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1); var tr = t;
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        var ex = ax + dx * t - x, ez = az + dz * t - z, d = Math.sqrt(ex * ex + ez * ez), e = PE[i];
+        if (d < 12) out.push([i, e, +tr.toFixed(2), +d.toFixed(2), +EW[e].toFixed(1), +(PH[i] + (PH[i + 1] - PH[i]) * t).toFixed(2), i - ES[e], ES[e + 1] - 1 - i, +(PL[i + 1] - PL[i]).toFixed(1)]);
+      }
+    }
+    return out;
+  }
   function carGround(x, z, refY) {
-    var r = 9, bestS = 1e9, bh = 0, be = -1, fpS = 1e9, fpH = 0;
+    var r = 9, bestS = 1e9, bh = 0, be = -1, fpS = 1e9, fpH = 0, bdh = 0, fdh = 0;
     var x0 = Math.max(0, ((x - r + HALF) / GC) | 0), x1 = Math.min(GN - 1, ((x + r + HALF) / GC) | 0);
     var z0 = Math.max(0, ((z - r + HALF) / GC) | 0), z1 = Math.min(GN - 1, ((z + r + HALF) / GC) | 0);
     for (var cz = z0; cz <= z1; cz++) for (var cx = x0; cx <= x1; cx++) {
@@ -648,19 +664,20 @@
           if (ESW[e] && !PB[i] && d < hw + SWW + 0.1) {
             var jx = PX[i] + dx * t, jz = PZ[i] + dz * t;
             if (Math.hypot(jx - VX[EA[e]], jz - VZ[EA[e]]) > VTRIM[EA[e]] && Math.hypot(jx - VX[EB[e]], jz - VZ[EB[e]]) > VTRIM[EB[e]]) {
-              var sf = refY === null ? d : Math.abs(h - refY);
-              if (sf < fpS) { fpS = sf; fpH = h + KERB; }
+              var fh = refY === null ? 0 : Math.abs(h + KERB - refY), sf = d + Math.max(0, fh - 1.2) * 6;
+              if (sf < fpS) { fpS = sf; fpH = h + KERB; fdh = fh; }
             }
           }
           continue;
         }
-        var s = refY === null ? d : Math.abs(h - refY);
-        if (s < bestS) { bestS = s; bh = h; be = e; }
+        /* the nearest surface wins; height only separates different levels (a bridge over a road) */
+        var dh = refY === null ? 0 : Math.abs(h - refY), s = d + Math.max(0, dh - 1.2) * 6;
+        if (s < bestS) { bestS = s; bh = h; be = e; bdh = dh; }
       }
     }
-    if (be >= 0 && (refY === null || bestS < 5)) { G.onRoad = true; G.e = be; G.surf = 0; return bh + 0.03; }
+    if (be >= 0 && bdh < 5) { G.onRoad = true; G.e = be; G.surf = 0; return bh + 0.03; }
     G.onRoad = false; G.e = -1;
-    if (fpS < 5) { G.surf = 1; return fpH; }
+    if (fpS < 1e9 && fdh < 5) { G.surf = 1; return fpH; }
     G.surf = 2;
     return padAdjust(x, z, terrainH(x, z, 4));
   }
@@ -3525,7 +3542,7 @@
   function updateEnv(dt) {
     var now = performance.now() / 1000; envT = now - envLast;
     var key = Math.round(sdir.y * 60) + ':' + Math.round(W.cloud * 20) + ':' + Math.round(W.dark * 10) + ':' + Math.round(LIT.uNight.value * 20);
-    if (envT < 1.5 || (key === envKey && envT < 12)) return;
+    if (envT < 4 || (key === envKey && envT < 20)) return;
     envLast = now; envKey = key;
     var old = envRT;
     envRT = pmrem.fromScene(envScene, 0, 0.1, 1000);
@@ -5065,7 +5082,7 @@
           if (i > a && PL[i] - PL[i - 1] > 0.5 && Math.abs(PH[i] - PH[i - 1]) / (PL[i] - PL[i - 1]) > 0.3) steep++;
         } }
       return { bumpMeanCm: +(100 * sum / n).toFixed(2), bumpMaxCm: +(100 * mx).toFixed(1), over15cm: big, steeper30pct: steep, n: n };
-    }, stepCar: stepCar, types: typeMeshes, fuel: FUEL, stops: STOPS_ALL, peds: peds, fill: fill, tow: tow, setFuelFactor: function (f) { fuelFactor = f; }, setPeds: function (n) { pedCount = n; }, carG: carG, dbg: DBG, net: function () { return { PNX: PNX, PNZ: PNZ, PE: PE, ESW: ESW, PX: PX, PZ: PZ, PH: PH, PL: PL, ES: ES, ECL: ECL, EF: EF, NE: NE, EW: EW }; }, setTraffic: function (n) { trafficCount = n; }, placeAt: placeCarAt, TYPES: TYPES, renderer: renderer, scene: scene, view: function (y, p, d) { orbit.yaw = y; orbit.pitch = p; camDist = d; orbit.idle = -1e9; }, sigs: SIGS, others: others, car: car, keys: keys, place: placeOnRoad, warmAll: function () { for (var k = 0; k < 4; k++) { plan(car.x, car.z); while (queue.length) buildSome(1000); } plan(car.x, car.z); }, chunks: chunks, env: env, film: film, setWeather: setWeather, radio: Radio,
+    }, stepCar: stepCar, types: typeMeshes, fuel: FUEL, stops: STOPS_ALL, peds: peds, fill: fill, tow: tow, setFuelFactor: function (f) { fuelFactor = f; }, setPeds: function (n) { pedCount = n; }, carG: carG, dbg: DBG, cands: groundCands, cornerWorld: cornerWorld, groundAt: function (x, z, r) { return carGround(x, z, r); }, net: function () { return { PNX: PNX, PNZ: PNZ, PE: PE, ESW: ESW, PX: PX, PZ: PZ, PH: PH, PL: PL, ES: ES, ECL: ECL, EF: EF, NE: NE, EW: EW }; }, setTraffic: function (n) { trafficCount = n; }, placeAt: placeCarAt, TYPES: TYPES, renderer: renderer, scene: scene, view: function (y, p, d) { orbit.yaw = y; orbit.pitch = p; camDist = d; orbit.idle = -1e9; }, sigs: SIGS, others: others, car: car, keys: keys, place: placeOnRoad, warmAll: function () { for (var k = 0; k < 4; k++) { plan(car.x, car.z); while (queue.length) buildSome(1000); } plan(car.x, car.z); }, chunks: chunks, env: env, film: film, setWeather: setWeather, radio: Radio,
     stats: function () { return { edges: NE, points: PX ? PX.length : 0, buildings: BLD ? BLD.N : 0, signals: SIGS.length, chunks: chunks.size, queue: queue.length, calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; } };
 
   loadMsg.textContent = 'Loading the Hobart map…';

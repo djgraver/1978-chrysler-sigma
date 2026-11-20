@@ -66,7 +66,7 @@
   function updateEnv(dt) {
     var now = performance.now() / 1000; envT = now - envLast;
     var key = Math.round(sdir.y * 60) + ':' + Math.round(W.cloud * 20) + ':' + Math.round(W.dark * 10) + ':' + Math.round(LIT.uNight.value * 20);
-    if (envT < 1.5 || (key === envKey && envT < 12)) return;
+    if (envT < 4 || (key === envKey && envT < 20)) return;
     envLast = now; envKey = key;
     var old = envRT;
     envRT = pmrem.fromScene(envScene, 0, 0.1, 1000);
