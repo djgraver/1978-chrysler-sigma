@@ -12,6 +12,10 @@ The simulator reads its map from the image files next to it, so serve the folder
     python3 -m http.server
     # then open http://localhost:8000/
 
+**Last Light (v7).** The simulator is now also a short art game. Hobart, November 1978: the sky has gone the colour of milk and the world is quietly winding down. Five chapters, each an errand of two stops (a prescription for Mum, a set of white photographs for Ruth, a record back to Tom, a cutting of Dad's rose, and a full tank for the drive up Mount Wellington). A column of pale light marks each stop, a card shows the goal, distance and direction, and you stop there to read what happens. After every chapter the sky whitens, the colour drains, the streets and roads empty, the radio loses its stations, and bulletins from a radio somewhere grow fainter. The last errand ends at the summit, where the driver turns off the engine and dies as the light comes in: no violence, just a heartbeat slowing to nothing and a fade to white. The credits are a slow scroll through deep time, from the sun's eight-minute light to the heat death of the universe, and end on "You did the errands anyway." Progress is remembered in your browser; "Just drive" skips the story.
+
+**The driver** sits in the right-hand seat and never leaves the car: a feathered 70s shag, aviators with orange glass, a burnt-orange shirt with a huge collar over a brown corduroy jacket, a medallion and flares. Their hands stay on the wheel and follow it as it turns, and their head looks into the corners. In driver view you see through the orange lenses.
+
 Controls: W A S D or the arrow keys to drive, Space for the handbrake, C for chase or driver view, R to get back on the road, F (held) to fill up at a pump, M to switch the radio on or off, N for the next station, drag to look around. On a phone there are on-screen pedals and a fill button. Time of day, the day cycle, weather and the film look are in the "Time & weather" panel; fuel use, sound, traffic, pedestrians and shadows are under "Options".
 
 ## What is in the world

@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
 <style>
   /* A full-screen drive through 1970s Hobart. The instrument panels use a fixed warm-dark look that does not follow the page theme. */
   :root {
@@ -74,6 +74,60 @@
   }
   @media (max-width: 560px) { #map { width: 112px; height: 112px; } .tr { width: 190px; } #gauges { width: 232px; height: 88px; } .prompt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); } .credit { font-size: 9.5px; } }
   @media (max-width: 560px) and (pointer: fine) { .bl { max-width: 60vw; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); } }
+  /* the story */
+  .quest { padding: 9px 12px 10px; display: grid; gap: 2px; }
+  .qchap { font: 600 10.5px/1.2 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--mustard); }
+  .qgoal { font: 500 17px/1.25 'EB Garamond', Georgia, serif; }
+  .qwhere { color: var(--muted); font: italic 14px/1.3 'EB Garamond', Georgia, serif; }
+  .qnav { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .qarrow { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #fff1d0; color: #1d1209; font: 700 13px/1 var(--font); }
+  .qhint { color: #fff1d0; font-size: 12px; min-height: 0; }
+  .qhint:empty { display: none; }
+  .scene { position: fixed; inset: 0; z-index: 4; display: flex; align-items: flex-end; justify-content: center; opacity: 0; transition: opacity 0.7s; }
+  .scene.on { opacity: 1; }
+  .scene .bar { position: absolute; left: 0; right: 0; height: 11vh; background: #0b0907; transition: transform 1.1s ease; }
+  .scene .bar.top { top: 0; transform: translateY(-100%); } .scene .bar.bot { bottom: 0; transform: translateY(100%); }
+  .scene.on .bar { transform: none; }
+  .scenebox { position: relative; box-sizing: border-box; width: min(640px, calc(100vw - 32px)); margin: 0 0 calc(11vh + 20px + env(safe-area-inset-bottom, 0px)); padding: 20px 24px 18px; background: rgba(14, 11, 9, 0.74); border-radius: 4px; backdrop-filter: blur(3px); }
+  .shead { font: 600 12px/1.2 var(--display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--mustard); }
+  .ssub { font: italic 16px/1.3 'EB Garamond', Georgia, serif; color: var(--muted); margin-top: 3px; }
+  .ssub:empty { display: none; }
+  .stxt { font: 20px/1.5 'EB Garamond', Georgia, serif; white-space: pre-wrap; margin-top: 10px; text-wrap: pretty; }
+  .stxt:empty { display: none; }
+  .scene.big .scenebox { text-align: center; }
+  .scene.big .shead { font: 500 38px/1.1 'EB Garamond', Georgia, serif; letter-spacing: 0.02em; text-transform: none; color: var(--fg); }
+  .scene.big .ssub { font-size: 18px; }
+  .scene.big .sbtns { justify-content: center; }
+  .sbtns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .sbtns .btn:first-child { background: #fff1d0; color: #1d1209; border-color: transparent; font-weight: 600; }
+  .scene.ending .bar { display: none; }
+  .scene.ending { align-items: flex-start; }
+  .scene.ending .scenebox { background: none; backdrop-filter: none; margin: calc(9vh + env(safe-area-inset-top, 0px)) 0 0; color: #3b2f24; }
+  .endline { font: italic 23px/1.45 'EB Garamond', Georgia, serif; margin: 0 0 8px; opacity: 0; transition: opacity 3s ease; text-shadow: 0 0 18px rgba(255, 252, 244, 0.9), 0 0 4px rgba(255, 252, 244, 0.8); }
+  .endline.in { opacity: 1; }
+  .caption { position: fixed; left: 50%; transform: translateX(-50%); top: calc(14px + env(safe-area-inset-top, 0px)); z-index: 3; max-width: min(420px, calc(100vw - 600px)); min-width: 220px; padding: 8px 14px; text-align: center; opacity: 0; transition: opacity 0.8s; pointer-events: none; }
+  .caption.on { opacity: 1; }
+  .caplab { display: block; font: 600 9.5px/1.2 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--mustard); margin-bottom: 3px; }
+  #capTxt { font: italic 15px/1.35 'EB Garamond', Georgia, serif; }
+  @media (max-width: 900px) { .caption { top: auto; bottom: calc(176px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px); } }
+  @media (pointer: coarse) { .caption { top: auto; bottom: calc(250px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px); } }
+  body.cine .hud, body.cine .gaugebox, body.cine .prompt, body.cine .pads, body.cine .caption { opacity: 0 !important; pointer-events: none !important; transition: opacity 2s; }
+  .credits { position: fixed; inset: 0; z-index: 6; overflow-y: auto; background: #f7f4ee; color: #f7f4ee; transition: background 7s ease, color 7s ease; scrollbar-width: none; }
+  .credits::-webkit-scrollbar { display: none; }
+  .credits.on { background: #0c0a08; color: #ede3d1; }
+  .credbody { box-sizing: border-box; max-width: 600px; margin: 0 auto; padding: 72vh max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); text-align: center; font-family: 'EB Garamond', Georgia, serif; }
+  .credbody h2 { font: 400 46px/1.1 'EB Garamond', Georgia, serif; margin: 0; letter-spacing: 0.02em; }
+  .csub { font-style: italic; font-size: 18px; opacity: 0.7; margin: 8px 0 0; }
+  .gap { height: 28vh; }
+  .cosmos { font-size: 22px; line-height: 1.6; margin: 0 0 12vh; text-wrap: pretty; }
+  .crow { display: grid; gap: 3px; margin: 0 0 28px; font-size: 18px; line-height: 1.45; }
+  .crow .cnote { font-style: italic; opacity: 0.8; margin-top: 10vh; }
+  .crow .clab { font: 600 10.5px/1.2 var(--display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--mustard); }
+  .cend { font-style: italic; font-size: 20px; opacity: 0.8; }
+  .credbtns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; padding: 6vh 16px 30vh; opacity: 0; transition: opacity 2s; }
+  .credbtns.on { opacity: 1; }
+  .credbtns .btn { font-size: 14px; padding: 10px 16px; background: transparent; }
+  .credskip { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); z-index: 7; background: transparent; opacity: 0.6; }
   #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 5; text-align: center; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
   #loading h2 { font: 600 28px/1.2 var(--display); margin: 0 0 8px; color: var(--mustard); text-wrap: balance; }
   #loading p { margin: 0; color: var(--muted); font-size: 14px; }
@@ -87,6 +141,27 @@
     <div id="street">&nbsp;</div>
     <div id="info">&nbsp;</div>
   </div>
+  <div class="panel quest" id="quest" hidden aria-live="polite">
+    <div class="qchap" id="qChap"></div>
+    <div class="qgoal" id="qGoal"></div>
+    <div class="qwhere" id="qWhere"></div>
+    <div class="qnav"><span class="qarrow" id="qArrow" aria-hidden="true">&uarr;</span><span id="qDist"></span></div>
+    <div class="qhint" id="qHint"></div>
+  </div>
+</div>
+<div class="panel caption" id="caption" hidden aria-live="polite"><span class="caplab">From a radio somewhere</span><span id="capTxt"></span></div>
+<div class="scene" id="scene" hidden role="dialog" aria-modal="false" aria-labelledby="sceneHead">
+  <div class="bar top"></div><div class="bar bot"></div>
+  <div class="scenebox">
+    <div class="shead" id="sceneHead"></div><div class="ssub" id="sceneSub"></div>
+    <div class="stxt" id="sceneTxt"></div>
+    <div class="sbtns"><button class="btn" id="sceneBtn" hidden>Continue</button><button class="btn" id="sceneAlt" hidden></button><button class="btn" id="sceneAlt2" hidden></button></div>
+  </div>
+</div>
+<div class="credits" id="credits" hidden>
+  <div class="credbody" id="credBody"></div>
+  <div class="credbtns" id="credBtns"><button class="btn" id="credBtnDrive">Drive in the world as it was</button><button class="btn" id="credBtnStory">Begin again</button></div>
+  <button class="btn credskip" id="credSkip">Skip</button>
 </div>
 
 <div class="gaugebox"><canvas id="gauges" aria-label="Speedometer, fuel gauge and tachometer"></canvas></div>
@@ -98,6 +173,7 @@
   <div class="row">
     <button class="btn" id="camBtn">Driver view</button>
     <button class="btn" id="resetBtn">Back on road</button>
+    <button class="btn" id="storyBtn">Story</button>
   </div>
   <div class="row">
     <button class="btn" id="envBtn" aria-expanded="false" aria-controls="envPanel">Time &amp; weather</button>

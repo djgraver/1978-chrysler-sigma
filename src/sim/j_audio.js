@@ -5,7 +5,7 @@
      wind, rain and the thump of a collision. Starts on the first key or tap.
      ========================================================== */
   var Sound = (function () {
-    var ctx = null, on = true, started = false, N = {}, lastImpact = 0;
+    var ctx = null, on = true, started = false, N = {}, lastImpact = 0, heartBpm = 0, nextBeat = 0, heartVol = 0.5, droneG = null;
     function noiseBuf(c, secs) {
       var b = c.createBuffer(1, c.sampleRate * secs, c.sampleRate), d = b.getChannelData(0), last = 0;
       for (var i = 0; i < d.length; i++) { var w = Math.random() * 2 - 1; last = last * 0.6 + w * 0.4; d[i] = last; }
@@ -64,6 +64,35 @@
       og.gain.setValueAtTime(a * 0.12, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
       o.connect(og); og.connect(N.master); o.start(t); o.stop(t + 0.25);
     }
+    /* a heartbeat, felt more than heard: two low thumps */
+    function beat(t, v) {
+      [[0, 1], [0.16, 0.7]].forEach(function (b) {
+        var o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+        o.frequency.setValueAtTime(62, t + b[0]); o.frequency.exponentialRampToValueAtTime(38, t + b[0] + 0.14);
+        g.gain.setValueAtTime(0.0001, t + b[0]); g.gain.exponentialRampToValueAtTime(v * b[1], t + b[0] + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + b[0] + 0.2);
+        o.connect(g); g.connect(N.master); o.start(t + b[0]); o.stop(t + b[0] + 0.25);
+      });
+    }
+    /* a slow pad for the ending and the credits: open fifths drifting between two chords */
+    function drone(level) {
+      if (!ctx) return;
+      if (!droneG) {
+        droneG = ctx.createGain(); droneG.gain.value = 0;
+        var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 0.4;
+        var dl = ctx.createDelay(1.5), fb = ctx.createGain(); dl.delayTime.value = 0.9; fb.gain.value = 0.45;
+        lp.connect(droneG); droneG.connect(N.master); droneG.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(N.master);
+        [[38, 0.5], [45, 0.35], [50, 0.28], [57, 0.2], [62, 0.12], [69, 0.06]].forEach(function (n, i) {
+          [-6, 5].forEach(function (cents) {
+            var o = ctx.createOscillator(), g = ctx.createGain(); o.type = i < 2 ? 'sine' : 'triangle';
+            o.frequency.value = 440 * Math.pow(2, (n[0] - 69) / 12); o.detune.value = cents;
+            var lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.05 + i * 0.017; lg.gain.value = n[1] * 0.4;
+            g.gain.value = n[1] * 0.5; lfo.connect(lg); lg.connect(g.gain);
+            o.connect(g); g.connect(lp); o.start(); lfo.start();
+          });
+        });
+      }
+      droneG.gain.setTargetAtTime(on ? level * 0.12 : 0, ctx.currentTime, 2.5);
+    }
     function set(param, v, tc) { param.setTargetAtTime(v, ctx.currentTime, tc || 0.04); }
     function update(dt) {
       if (!started || !ctx) return;
@@ -81,9 +110,15 @@
       set(N.wg.gain, on ? Math.min(0.2, v * v * 0.00022) + W.wind * 0.03 : 0, 0.2);
       set(N.rag.gain, on ? W.rain * 0.07 : 0, 0.5);
       if (car.impact > lastImpact + 1.2 && on) thump(car.impact);
+      if (heartBpm > 0 && on) {
+        if (nextBeat < ctx.currentTime) nextBeat = ctx.currentTime + 0.05;
+        if (nextBeat < ctx.currentTime + 0.2) { beat(nextBeat, heartVol); nextBeat += 60 / heartBpm * (1 + (Math.random() - 0.5) * 0.06 * (80 / heartBpm)); }
+      }
       lastImpact = car.impact;
     }
     function toggle() { on = !on; if (on && !started) start(); if (ctx && on && ctx.state === 'suspended') ctx.resume(); if (N.master) set(N.master.gain, on ? 0.9 : 0, 0.05); return on; }
     function wake() { if (!started) start(); else if (ctx && ctx.state === 'suspended') ctx.resume(); }
-    return { start: start, update: update, toggle: toggle, wake: wake, isOn: function () { return on; } };
+    return { start: start, update: update, toggle: toggle, wake: wake, isOn: function () { return on; },
+             heart: function (bpm, v) { heartBpm = bpm; if (v !== undefined) heartVol = v; }, drone: drone,
+             engineMute: function (m) { if (N.master) set(N.master.gain, on ? (m ? 0.35 : 0.9) : 0, 1.5); } };
   })();

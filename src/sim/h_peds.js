@@ -119,12 +119,14 @@
       if (!n) continue;
       var i = CI[CS[c] + ((Math.random() * n) | 0)], e = PE[i];
       if (!ESW[e] || PB[i]) continue;
+      if ((pedOnEdge.get(e) || 0) >= Math.max(2, (PL[ES[e + 1] - 1] - PL[ES[e]]) / 14)) continue;
       var u = urbanAt(PX[i], PZ[i]);
       if (Math.random() > 0.12 + 1.6 * u) continue;
       p.i = i; p.t = Math.random() * (PL[i + 1] - PL[i]); p.dir = Math.random() < 0.5 ? 1 : -1; p.side = Math.random() < 0.5 ? 1 : -1;
       p.v = 1.05 + Math.random() * 0.6; p.stop = null; p.wait = 0; p.dodge = 0; p.dodgeV = 0;
       pedPos(p);
       if (onCarriageway(p.x, p.z, -1, 0.4)) continue;
+      pedOnEdge.set(e, (pedOnEdge.get(e) || 0) + 1);
       p.rx = p.x; p.rz = p.z; p.ry = p.y; p.h = Math.atan2(-(PZ[i + 1] - PZ[i]) * p.dir, (PX[i + 1] - PX[i]) * p.dir);
       return true;
     }
@@ -149,12 +151,15 @@
     if (Math.random() < 0.3) p.side = -p.side;   /* cross the road at the corner */
     return true;
   }
-  var pedTmpCol = new THREE.Color();
+  var pedTmpCol = new THREE.Color(), pedOnEdge = new Map();
   function stepPeds(dt) {
     var cfx = Math.cos(car.h), cfz = -Math.sin(car.h), csp = Math.abs(car.vx), used = [0, 0];
+    /* how many people each street already has, so new ones spread out */
+    pedOnEdge.clear();
+    for (var q0 = 0; q0 < PED_MAX; q0++) { var pp = peds[q0]; if (pp.i >= 0) { var ee = PE[pp.i]; pedOnEdge.set(ee, (pedOnEdge.get(ee) || 0) + 1); } }
     /* fewer people out late at night, early in the morning and in the rain */
     var hr = env.hour, busy = hr < 6 ? 0.08 : hr < 8 ? 0.08 + (hr - 6) * 0.4 : hr < 18 ? 1 : hr < 23 ? 1 - (hr - 18) * 0.17 : 0.12;
-    var cap = Math.min(PED_MAX, Math.round(pedCount * busy * (1 - 0.55 * W.rain - 0.4 * W.snow)));
+    var cap = Math.min(PED_MAX, Math.round(pedCount * busy * lifeMul * (1 - 0.55 * W.rain - 0.4 * W.snow)));
     for (var q = 0; q < PED_MAX; q++) {
       var p = peds[q];
       if (q >= cap && (p.i < 0 || q >= pedCount || Math.hypot(p.rx - car.x, p.rz - car.z) > 140)) { p.i = -1; continue; }

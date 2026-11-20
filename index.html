@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
 <style>
   /* A full-screen drive through 1970s Hobart. The instrument panels use a fixed warm-dark look that does not follow the page theme. */
   :root {
@@ -74,6 +74,60 @@
   }
   @media (max-width: 560px) { #map { width: 112px; height: 112px; } .tr { width: 190px; } #gauges { width: 232px; height: 88px; } .prompt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); } .credit { font-size: 9.5px; } }
   @media (max-width: 560px) and (pointer: fine) { .bl { max-width: 60vw; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); } }
+  /* the story */
+  .quest { padding: 9px 12px 10px; display: grid; gap: 2px; }
+  .qchap { font: 600 10.5px/1.2 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--mustard); }
+  .qgoal { font: 500 17px/1.25 'EB Garamond', Georgia, serif; }
+  .qwhere { color: var(--muted); font: italic 14px/1.3 'EB Garamond', Georgia, serif; }
+  .qnav { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .qarrow { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #fff1d0; color: #1d1209; font: 700 13px/1 var(--font); }
+  .qhint { color: #fff1d0; font-size: 12px; min-height: 0; }
+  .qhint:empty { display: none; }
+  .scene { position: fixed; inset: 0; z-index: 4; display: flex; align-items: flex-end; justify-content: center; opacity: 0; transition: opacity 0.7s; }
+  .scene.on { opacity: 1; }
+  .scene .bar { position: absolute; left: 0; right: 0; height: 11vh; background: #0b0907; transition: transform 1.1s ease; }
+  .scene .bar.top { top: 0; transform: translateY(-100%); } .scene .bar.bot { bottom: 0; transform: translateY(100%); }
+  .scene.on .bar { transform: none; }
+  .scenebox { position: relative; box-sizing: border-box; width: min(640px, calc(100vw - 32px)); margin: 0 0 calc(11vh + 20px + env(safe-area-inset-bottom, 0px)); padding: 20px 24px 18px; background: rgba(14, 11, 9, 0.74); border-radius: 4px; backdrop-filter: blur(3px); }
+  .shead { font: 600 12px/1.2 var(--display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--mustard); }
+  .ssub { font: italic 16px/1.3 'EB Garamond', Georgia, serif; color: var(--muted); margin-top: 3px; }
+  .ssub:empty { display: none; }
+  .stxt { font: 20px/1.5 'EB Garamond', Georgia, serif; white-space: pre-wrap; margin-top: 10px; text-wrap: pretty; }
+  .stxt:empty { display: none; }
+  .scene.big .scenebox { text-align: center; }
+  .scene.big .shead { font: 500 38px/1.1 'EB Garamond', Georgia, serif; letter-spacing: 0.02em; text-transform: none; color: var(--fg); }
+  .scene.big .ssub { font-size: 18px; }
+  .scene.big .sbtns { justify-content: center; }
+  .sbtns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .sbtns .btn:first-child { background: #fff1d0; color: #1d1209; border-color: transparent; font-weight: 600; }
+  .scene.ending .bar { display: none; }
+  .scene.ending { align-items: flex-start; }
+  .scene.ending .scenebox { background: none; backdrop-filter: none; margin: calc(9vh + env(safe-area-inset-top, 0px)) 0 0; color: #3b2f24; }
+  .endline { font: italic 23px/1.45 'EB Garamond', Georgia, serif; margin: 0 0 8px; opacity: 0; transition: opacity 3s ease; text-shadow: 0 0 18px rgba(255, 252, 244, 0.9), 0 0 4px rgba(255, 252, 244, 0.8); }
+  .endline.in { opacity: 1; }
+  .caption { position: fixed; left: 50%; transform: translateX(-50%); top: calc(14px + env(safe-area-inset-top, 0px)); z-index: 3; max-width: min(420px, calc(100vw - 600px)); min-width: 220px; padding: 8px 14px; text-align: center; opacity: 0; transition: opacity 0.8s; pointer-events: none; }
+  .caption.on { opacity: 1; }
+  .caplab { display: block; font: 600 9.5px/1.2 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--mustard); margin-bottom: 3px; }
+  #capTxt { font: italic 15px/1.35 'EB Garamond', Georgia, serif; }
+  @media (max-width: 900px) { .caption { top: auto; bottom: calc(176px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px); } }
+  @media (pointer: coarse) { .caption { top: auto; bottom: calc(250px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px); } }
+  body.cine .hud, body.cine .gaugebox, body.cine .prompt, body.cine .pads, body.cine .caption { opacity: 0 !important; pointer-events: none !important; transition: opacity 2s; }
+  .credits { position: fixed; inset: 0; z-index: 6; overflow-y: auto; background: #f7f4ee; color: #f7f4ee; transition: background 7s ease, color 7s ease; scrollbar-width: none; }
+  .credits::-webkit-scrollbar { display: none; }
+  .credits.on { background: #0c0a08; color: #ede3d1; }
+  .credbody { box-sizing: border-box; max-width: 600px; margin: 0 auto; padding: 72vh max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); text-align: center; font-family: 'EB Garamond', Georgia, serif; }
+  .credbody h2 { font: 400 46px/1.1 'EB Garamond', Georgia, serif; margin: 0; letter-spacing: 0.02em; }
+  .csub { font-style: italic; font-size: 18px; opacity: 0.7; margin: 8px 0 0; }
+  .gap { height: 28vh; }
+  .cosmos { font-size: 22px; line-height: 1.6; margin: 0 0 12vh; text-wrap: pretty; }
+  .crow { display: grid; gap: 3px; margin: 0 0 28px; font-size: 18px; line-height: 1.45; }
+  .crow .cnote { font-style: italic; opacity: 0.8; margin-top: 10vh; }
+  .crow .clab { font: 600 10.5px/1.2 var(--display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--mustard); }
+  .cend { font-style: italic; font-size: 20px; opacity: 0.8; }
+  .credbtns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; padding: 6vh 16px 30vh; opacity: 0; transition: opacity 2s; }
+  .credbtns.on { opacity: 1; }
+  .credbtns .btn { font-size: 14px; padding: 10px 16px; background: transparent; }
+  .credskip { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); z-index: 7; background: transparent; opacity: 0.6; }
   #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 5; text-align: center; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
   #loading h2 { font: 600 28px/1.2 var(--display); margin: 0 0 8px; color: var(--mustard); text-wrap: balance; }
   #loading p { margin: 0; color: var(--muted); font-size: 14px; }
@@ -87,6 +141,27 @@
     <div id="street">&nbsp;</div>
     <div id="info">&nbsp;</div>
   </div>
+  <div class="panel quest" id="quest" hidden aria-live="polite">
+    <div class="qchap" id="qChap"></div>
+    <div class="qgoal" id="qGoal"></div>
+    <div class="qwhere" id="qWhere"></div>
+    <div class="qnav"><span class="qarrow" id="qArrow" aria-hidden="true">&uarr;</span><span id="qDist"></span></div>
+    <div class="qhint" id="qHint"></div>
+  </div>
+</div>
+<div class="panel caption" id="caption" hidden aria-live="polite"><span class="caplab">From a radio somewhere</span><span id="capTxt"></span></div>
+<div class="scene" id="scene" hidden role="dialog" aria-modal="false" aria-labelledby="sceneHead">
+  <div class="bar top"></div><div class="bar bot"></div>
+  <div class="scenebox">
+    <div class="shead" id="sceneHead"></div><div class="ssub" id="sceneSub"></div>
+    <div class="stxt" id="sceneTxt"></div>
+    <div class="sbtns"><button class="btn" id="sceneBtn" hidden>Continue</button><button class="btn" id="sceneAlt" hidden></button><button class="btn" id="sceneAlt2" hidden></button></div>
+  </div>
+</div>
+<div class="credits" id="credits" hidden>
+  <div class="credbody" id="credBody"></div>
+  <div class="credbtns" id="credBtns"><button class="btn" id="credBtnDrive">Drive in the world as it was</button><button class="btn" id="credBtnStory">Begin again</button></div>
+  <button class="btn credskip" id="credSkip">Skip</button>
 </div>
 
 <div class="gaugebox"><canvas id="gauges" aria-label="Speedometer, fuel gauge and tachometer"></canvas></div>
@@ -98,6 +173,7 @@
   <div class="row">
     <button class="btn" id="camBtn">Driver view</button>
     <button class="btn" id="resetBtn">Back on road</button>
+    <button class="btn" id="storyBtn">Story</button>
   </div>
   <div class="row">
     <button class="btn" id="envBtn" aria-expanded="false" aria-controls="envPanel">Time &amp; weather</button>
@@ -2779,10 +2855,11 @@
     return mu;
   }
   function tyreF(alpha, Fz, mu, B) { return mu * Fz * Math.sin(1.45 * Math.atan((B || 9.5) * alpha)); }
-  var fuelFactor = 5, DBG = { flat: false };
+  var fuelFactor = 5, DBG = { flat: false }, LOCK = { on: false }, lifeMul = 1;
   function stepCar(dt) {
     var up = keys.ArrowUp || keys.KeyW || touch.g, dn = keys.ArrowDown || keys.KeyS || touch.b;
     var lf = keys.ArrowLeft || keys.KeyA || touch.l, rt = keys.ArrowRight || keys.KeyD || touch.r, hb = !!keys.Space;
+    if (LOCK.on) { up = false; dn = false; lf = false; rt = false; hb = false; }
     /* steering: the wheel winds on gradually and unwinds a little faster */
     var target = (lf ? 1 : 0) - (rt ? 1 : 0);
     var rate = target === 0 ? 2.0 : (car.sIn * target < 0 ? 2.6 : 1.0);
@@ -2793,6 +2870,7 @@
     var thrIn = 0, brkIn = 0;
     if (car.gear === -1) { if (dn) thrIn = 1; if (up) { if (car.vx < -0.3) brkIn = 1; else car.gear = 1; } }
     else { if (up) thrIn = 1; if (dn) { if (car.vx > 0.4) brkIn = 1; else if (!up) car.gear = -1; } }
+    if (LOCK.on && Math.abs(car.vx) > 0.05) brkIn = 1;
     if (!car.engineOn || car.cut) thrIn = 0;
     car.thr += clamp(thrIn - car.thr, -dt * 6, dt * 3.5);
     car.brk += clamp(brkIn - car.brk, -dt * 8, dt * 5);
@@ -3351,7 +3429,7 @@
     var q, o;
     for (q = 0; q < others.length; q++) {
       o = others[q];
-      if (q >= trafficCount) { o.i = -1; continue; }
+      if (q >= Math.round(trafficCount * lifeMul)) { o.i = -1; continue; }
       if (o.i < 0 || Math.hypot(o.x - car.x, o.z - car.z) > 440) { spawnOther(o, false); if (o.i < 0) continue; }
       var e = PE[o.i], a = ES[e], b = ES[e + 1] - 1, sl, T = TYPES[o.type];
       var toEnd = o.dir > 0 ? PL[b] - PL[o.i] - o.t : PL[o.i] + o.t, target = ESP[e] / 3.6 * o.k * (T.bus || T.truck ? 0.85 : 1);
@@ -3541,7 +3619,7 @@
   var pmrem = new THREE.PMREMGenerator(renderer), envRT = null, envT = 99, envLast = -99, envKey = '';
   function updateEnv(dt) {
     var now = performance.now() / 1000; envT = now - envLast;
-    var key = Math.round(sdir.y * 60) + ':' + Math.round(W.cloud * 20) + ':' + Math.round(W.dark * 10) + ':' + Math.round(LIT.uNight.value * 20);
+    var key = Math.round(DECAY * 10) + ':' + Math.round(sdir.y * 60) + ':' + Math.round(W.cloud * 20) + ':' + Math.round(W.dark * 10) + ':' + Math.round(LIT.uNight.value * 20);
     if (envT < 4 || (key === envKey && envT < 20)) return;
     envLast = now; envKey = key;
     var old = envRT;
@@ -3580,6 +3658,7 @@
     { e: 0.25, zen: C('#3d6aa6'), hor: C('#b9cde0'), sun: C('#ffe4c0') },
     { e: 1.0, zen: C('#2f5f9e'), hor: C('#c4d6e6'), sun: C('#fff5e6') }
   ];
+  var DECAY = 0, pale = new THREE.Color();
   var zen = new THREE.Color(), hor = new THREE.Color(), sunc = new THREE.Color(), grey = new THREE.Color(), sdir = new THREE.Vector3();
   var exposure = 1;
   function updateSky(dt) {
@@ -3604,6 +3683,13 @@
     var lum = (hor.r + hor.g + hor.b) / 3;
     grey.setRGB(lum, lum * 1.02, lum * 1.08).multiplyScalar(0.85 - W.dark * 0.45);
     hor.lerp(grey, W.cloud * 0.8); zen.lerp(grey.multiplyScalar(0.85), W.cloud * 0.85);
+    /* the long afternoon: as the story goes on, the sky turns the colour of milk and the sun loses its edge */
+    if (DECAY > 0) {
+      var dl = 0.18 + 0.82 * sstep(-0.18, 0.2, e);
+      pale.setRGB(0.93, 0.91, 0.86).multiplyScalar(dl); hor.lerp(pale, DECAY * 0.75);
+      pale.setRGB(0.82, 0.83, 0.82).multiplyScalar(dl); zen.lerp(pale, DECAY * 0.6);
+      pale.setRGB(1.0, 0.97, 0.9); sunc.lerp(pale, DECAY * 0.7);
+    }
     var night = 1 - sstep(-0.1, 0.05, e);
     skyU.uSun.value.copy(sdir); skyU.uZen.value.copy(zen); skyU.uHor.value.copy(hor); skyU.uSunCol.value.copy(sunc);
     skyU.uCloud.value = W.cloud; skyU.uCloudDark.value = W.dark;
@@ -3611,13 +3697,14 @@
     LIT.uWet.value = W.wet; LIT.uSnowline.value = W.snowline; LIT.uSnowAll.value = W.all;
     WIND.value = W.wind;
     scene.fog.color.copy(hor);
-    scene.fog.near = W.fn; scene.fog.far = W.ff;
+    scene.fog.near = W.fn * (1 - 0.6 * DECAY); scene.fog.far = W.ff * (1 - 0.62 * DECAY);
     var sunUp = sstep(-0.03, 0.12, e);
-    sun.color.copy(sunc); sun.intensity = 1.35 * sunUp * (1 - 0.82 * W.cloud * (0.6 + 0.4 * W.dark));
+    sun.color.copy(sunc); sun.intensity = 1.35 * sunUp * (1 - 0.82 * W.cloud * (0.6 + 0.4 * W.dark)) * (1 - 0.5 * DECAY);
     sun.castShadow = sun.intensity > 0.12 && SHQ > 0;
     hemi.color.copy(zen).lerp(hor, 0.5).multiplyScalar(1.25); hemi.groundColor.setRGB(0.25, 0.23, 0.2).multiplyScalar(0.35 + 0.65 * sstep(-0.1, 0.3, e));
     hemi.intensity = 0.3 + 0.6 * sstep(-0.15, 0.35, e) * (1 - 0.3 * W.dark) + 0.25 * W.cloud * sstep(0, 0.3, e);
     moon.intensity = 0.16 * night * (1 - W.cloud * 0.7);
+    hemi.intensity += 0.22 * DECAY * sstep(-0.2, 0.2, e);
     waterU.uSun.value.copy(sdir); waterU.uSunCol.value.copy(sunc).multiplyScalar(sunUp); waterU.uZen.value.copy(zen); waterU.uHor.value.copy(hor);
     waterU.uFogC.value.copy(hor); waterU.uFogN.value = W.fn; waterU.uFogF.value = W.ff; waterU.uCloud.value = W.cloud; waterU.uWind.value = W.wind;
     /* the sky now lights the scene through the environment map, so the hemisphere fill is lighter */
@@ -3699,10 +3786,12 @@
   });
   var finalPass = new THREE.ShaderMaterial({
     uniforms: { tScene: { value: null }, tGlow: { value: null }, uRes: { value: new THREE.Vector2() }, uGP: { value: new THREE.Vector2() }, uTime: LIT.uTime,
-                uGrain: { value: 0.6 }, uFilm: { value: 1 }, uExp: { value: 1 }, uSRGB: { value: LINEAR_RT ? 0 : 1 } },
+                uGrain: { value: 0.6 }, uFilm: { value: 1 }, uExp: { value: 1 }, uSRGB: { value: LINEAR_RT ? 0 : 1 },
+                uDesat: { value: 0 }, uWhite: { value: 0 }, uTint: { value: new THREE.Color(1, 0.8, 0.52) }, uTintA: { value: 0 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: [
       'uniform sampler2D tScene; uniform sampler2D tGlow; uniform vec2 uRes; uniform vec2 uGP; uniform float uTime; uniform float uGrain; uniform float uFilm; uniform float uExp; uniform float uSRGB;',
+      'uniform float uDesat; uniform float uWhite; uniform vec3 uTint; uniform float uTintA;',
       'varying vec2 vUv;',
       'vec3 aces(vec3 x){ return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }',
       'float h12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }',
@@ -3719,6 +3808,8 @@
       '  c += g * (uFilm > 0.5 ? vec3(1.15, 0.72, 0.5) : vec3(0.7));',
       '  c = aces(c * uExp);',
       '  c = pow(c, vec3(1.0 / 2.2));',
+      '  float lq = dot(c, vec3(0.299, 0.587, 0.114)); c = mix(c, vec3(lq) * vec3(1.0, 0.99, 0.96), uDesat);',
+      '  c = mix(c, c * uTint * 1.15, uTintA);',
       '  if (uFilm > 0.5) {',
       '    float l = dot(c, vec3(0.299, 0.587, 0.114));',
       '    c = mix(vec3(l), c, 0.84);',
@@ -3734,6 +3825,7 @@
       '    float sp = step(0.99993, h12(floor(fc / 3.0) + fr * 1.37));',
       '    c = mix(c, vec3(0.08), sp * uGrain);',
       '  }',
+      '  c = mix(c, vec3(0.985, 0.975, 0.955), uWhite);',
       '  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);',
       '}'
     ].join('\n'), depthTest: false, depthWrite: false
@@ -3768,7 +3860,7 @@
       { f: 101.3, name: 'Sandy Bay Funk', g: 'funk' },
       { f: 105.7, name: 'Glam 105', g: 'glam' }
     ];
-    var ctx = null, master, music, radioIn, staticG, noiseBuf, on = false, freq = 96.9, vol = 0.55, song = null, current = null, timer = null, seed = (Math.random() * 1e6) | 0;
+    var dec = 0, ctx = null, master, music, radioIn, staticG, noiseBuf, on = false, freq = 96.9, vol = 0.55, song = null, current = null, timer = null, seed = (Math.random() * 1e6) | 0;
     function rng(s) { return function () { s |= 0; s = s + 0x6D2B79F5 | 0; var t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
     function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
     function init() {
@@ -4018,14 +4110,15 @@
         else current = null;
       }
       var t = ctx.currentTime;
-      radioIn.gain.setTargetAtTime(on && current ? sig * sig : 0, t, 0.05);
-      staticG.gain.setTargetAtTime(on ? (1 - sig) * 0.16 + 0.006 : 0, t, 0.05);
+      var live = Math.pow(clamp(1 - dec * 1.05, 0, 1), 1.5);
+      radioIn.gain.setTargetAtTime(on && current ? sig * sig * live : 0, t, 0.3);
+      staticG.gain.setTargetAtTime(on ? (1 - sig * live) * 0.16 + 0.006 : 0, t, 0.3);
       updateLabel(sig);
     }
     function updateLabel(sig) {
       var lab = $('station'), fq = $('freq');
       if (fq) fq.textContent = freq.toFixed(1);
-      if (lab) lab.textContent = !on ? 'Off' : current && sig > 0.25 ? current.name : 'Static…';
+      if (lab) lab.textContent = !on ? 'Off' : current && sig > 0.25 && dec < 0.9 ? current.name : 'Static…';
       var sl = $('tune'); if (sl && Math.abs(+sl.value - freq) > 0.05) sl.value = freq.toFixed(1);
     }
     return {
@@ -4046,7 +4139,9 @@
       },
       tune: function (f) { freq = f; tuneUpdate(); },
       volume: function (v) { vol = v; if (master) master.gain.setTargetAtTime(v, ctx.currentTime, 0.05); },
-      label: function () { updateLabel(0); }
+      label: function () { updateLabel(0); },
+      decay: function (v) { if (Math.abs(v - dec) > 0.001) { dec = v; tuneUpdate(); } },
+      isOn: function () { return on; }
     };
   })();
   /* ==========================================================
@@ -4170,12 +4265,14 @@
       if (!n) continue;
       var i = CI[CS[c] + ((Math.random() * n) | 0)], e = PE[i];
       if (!ESW[e] || PB[i]) continue;
+      if ((pedOnEdge.get(e) || 0) >= Math.max(2, (PL[ES[e + 1] - 1] - PL[ES[e]]) / 14)) continue;
       var u = urbanAt(PX[i], PZ[i]);
       if (Math.random() > 0.12 + 1.6 * u) continue;
       p.i = i; p.t = Math.random() * (PL[i + 1] - PL[i]); p.dir = Math.random() < 0.5 ? 1 : -1; p.side = Math.random() < 0.5 ? 1 : -1;
       p.v = 1.05 + Math.random() * 0.6; p.stop = null; p.wait = 0; p.dodge = 0; p.dodgeV = 0;
       pedPos(p);
       if (onCarriageway(p.x, p.z, -1, 0.4)) continue;
+      pedOnEdge.set(e, (pedOnEdge.get(e) || 0) + 1);
       p.rx = p.x; p.rz = p.z; p.ry = p.y; p.h = Math.atan2(-(PZ[i + 1] - PZ[i]) * p.dir, (PX[i + 1] - PX[i]) * p.dir);
       return true;
     }
@@ -4200,12 +4297,15 @@
     if (Math.random() < 0.3) p.side = -p.side;   /* cross the road at the corner */
     return true;
   }
-  var pedTmpCol = new THREE.Color();
+  var pedTmpCol = new THREE.Color(), pedOnEdge = new Map();
   function stepPeds(dt) {
     var cfx = Math.cos(car.h), cfz = -Math.sin(car.h), csp = Math.abs(car.vx), used = [0, 0];
+    /* how many people each street already has, so new ones spread out */
+    pedOnEdge.clear();
+    for (var q0 = 0; q0 < PED_MAX; q0++) { var pp = peds[q0]; if (pp.i >= 0) { var ee = PE[pp.i]; pedOnEdge.set(ee, (pedOnEdge.get(ee) || 0) + 1); } }
     /* fewer people out late at night, early in the morning and in the rain */
     var hr = env.hour, busy = hr < 6 ? 0.08 : hr < 8 ? 0.08 + (hr - 6) * 0.4 : hr < 18 ? 1 : hr < 23 ? 1 - (hr - 18) * 0.17 : 0.12;
-    var cap = Math.min(PED_MAX, Math.round(pedCount * busy * (1 - 0.55 * W.rain - 0.4 * W.snow)));
+    var cap = Math.min(PED_MAX, Math.round(pedCount * busy * lifeMul * (1 - 0.55 * W.rain - 0.4 * W.snow)));
     for (var q = 0; q < PED_MAX; q++) {
       var p = peds[q];
       if (q >= cap && (p.i < 0 || q >= pedCount || Math.hypot(p.rx - car.x, p.rz - car.z) > 140)) { p.i = -1; continue; }
@@ -4600,7 +4700,7 @@
      wind, rain and the thump of a collision. Starts on the first key or tap.
      ========================================================== */
   var Sound = (function () {
-    var ctx = null, on = true, started = false, N = {}, lastImpact = 0;
+    var ctx = null, on = true, started = false, N = {}, lastImpact = 0, heartBpm = 0, nextBeat = 0, heartVol = 0.5, droneG = null;
     function noiseBuf(c, secs) {
       var b = c.createBuffer(1, c.sampleRate * secs, c.sampleRate), d = b.getChannelData(0), last = 0;
       for (var i = 0; i < d.length; i++) { var w = Math.random() * 2 - 1; last = last * 0.6 + w * 0.4; d[i] = last; }
@@ -4659,6 +4759,35 @@
       og.gain.setValueAtTime(a * 0.12, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
       o.connect(og); og.connect(N.master); o.start(t); o.stop(t + 0.25);
     }
+    /* a heartbeat, felt more than heard: two low thumps */
+    function beat(t, v) {
+      [[0, 1], [0.16, 0.7]].forEach(function (b) {
+        var o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+        o.frequency.setValueAtTime(62, t + b[0]); o.frequency.exponentialRampToValueAtTime(38, t + b[0] + 0.14);
+        g.gain.setValueAtTime(0.0001, t + b[0]); g.gain.exponentialRampToValueAtTime(v * b[1], t + b[0] + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + b[0] + 0.2);
+        o.connect(g); g.connect(N.master); o.start(t + b[0]); o.stop(t + b[0] + 0.25);
+      });
+    }
+    /* a slow pad for the ending and the credits: open fifths drifting between two chords */
+    function drone(level) {
+      if (!ctx) return;
+      if (!droneG) {
+        droneG = ctx.createGain(); droneG.gain.value = 0;
+        var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 0.4;
+        var dl = ctx.createDelay(1.5), fb = ctx.createGain(); dl.delayTime.value = 0.9; fb.gain.value = 0.45;
+        lp.connect(droneG); droneG.connect(N.master); droneG.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(N.master);
+        [[38, 0.5], [45, 0.35], [50, 0.28], [57, 0.2], [62, 0.12], [69, 0.06]].forEach(function (n, i) {
+          [-6, 5].forEach(function (cents) {
+            var o = ctx.createOscillator(), g = ctx.createGain(); o.type = i < 2 ? 'sine' : 'triangle';
+            o.frequency.value = 440 * Math.pow(2, (n[0] - 69) / 12); o.detune.value = cents;
+            var lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.05 + i * 0.017; lg.gain.value = n[1] * 0.4;
+            g.gain.value = n[1] * 0.5; lfo.connect(lg); lg.connect(g.gain);
+            o.connect(g); g.connect(lp); o.start(); lfo.start();
+          });
+        });
+      }
+      droneG.gain.setTargetAtTime(on ? level * 0.12 : 0, ctx.currentTime, 2.5);
+    }
     function set(param, v, tc) { param.setTargetAtTime(v, ctx.currentTime, tc || 0.04); }
     function update(dt) {
       if (!started || !ctx) return;
@@ -4676,11 +4805,475 @@
       set(N.wg.gain, on ? Math.min(0.2, v * v * 0.00022) + W.wind * 0.03 : 0, 0.2);
       set(N.rag.gain, on ? W.rain * 0.07 : 0, 0.5);
       if (car.impact > lastImpact + 1.2 && on) thump(car.impact);
+      if (heartBpm > 0 && on) {
+        if (nextBeat < ctx.currentTime) nextBeat = ctx.currentTime + 0.05;
+        if (nextBeat < ctx.currentTime + 0.2) { beat(nextBeat, heartVol); nextBeat += 60 / heartBpm * (1 + (Math.random() - 0.5) * 0.06 * (80 / heartBpm)); }
+      }
       lastImpact = car.impact;
     }
     function toggle() { on = !on; if (on && !started) start(); if (ctx && on && ctx.state === 'suspended') ctx.resume(); if (N.master) set(N.master.gain, on ? 0.9 : 0, 0.05); return on; }
     function wake() { if (!started) start(); else if (ctx && ctx.state === 'suspended') ctx.resume(); }
-    return { start: start, update: update, toggle: toggle, wake: wake, isOn: function () { return on; } };
+    return { start: start, update: update, toggle: toggle, wake: wake, isOn: function () { return on; },
+             heart: function (bpm, v) { heartBpm = bpm; if (v !== undefined) heartVol = v; }, drone: drone,
+             engineMute: function (m) { if (N.master) set(N.master.gain, on ? (m ? 0.35 : 0.9) : 0, 1.5); } };
+  })();
+  /* ==========================================================
+     LAST LIGHT
+     Five errands across Hobart while the world quietly winds down: each one is "go here, then go there".
+     After every chapter the sky whitens, the colour drains, the streets empty and the radio loses its
+     stations. The last errand ends at the top of the mountain, and so does the driver. Then the credits.
+     ========================================================== */
+  var STORY = {
+    title: 'Last Light',
+    sub: 'Hobart, November 1978',
+    prologue: [
+      'On Tuesday the sky went the colour of milk and did not come back.',
+      'The radio says it is happening everywhere, quietly, the way a tide goes out. Nobody is panicking. There is nothing to panic at.',
+      'You have a few errands. You might as well do them.'
+    ],
+    chapters: [
+      { title: 'The prescription', decay: 0.0,
+        legs: [
+          { goal: "Pick up Mum's prescription", where: 'the chemist, Elizabeth Street', at: [-42.88129, 147.32716],
+            text: "The chemist is open, but there's nobody behind the counter. Her name is typed on a white paper bag beside the till, spelled right. You take it, and leave the exact money on the glass, because she taught you to." },
+          { goal: 'Take it to Mum', where: 'her flat in North Hobart', at: [-42.8703, 147.3166],
+            text: "She is asleep in the chair by the window with the cat in her lap. The tea beside her has gone cold; the skin on the milk doesn't move. You put the bag on the sill where she'll see it. You don't wake her. Later you will tell yourself that you didn't know." }
+        ] },
+      { title: 'Photographs', decay: 0.2,
+        legs: [
+          { goal: 'Collect your photographs', where: 'the camera shop, Murray Street', at: [-42.88268, 147.32589],
+            text: 'Twenty-four prints in a yellow envelope. Every one of them is white. Not overexposed. Just white, as if the light had got into the camera and would not leave.' },
+          { goal: 'Show them to Ruth', where: 'Salamanca Place', at: [-42.8866, 147.3318],
+            text: "Ruth goes through them slowly, holding each one up against the sky as if there might be something underneath. She says they are the most honest pictures anyone has ever taken. She keeps the one she says is of you." }
+        ] },
+      { title: 'The record', decay: 0.4,
+        legs: [
+          { goal: "Give Tom back his record", where: 'his place in Rosny, across the bridge', at: [-42.8652, 147.3592],
+            text: "Tom's front door is open. The stereo is still on, the needle riding the run-out groove, round and round, a sound like surf on a beach a long way off. You lift the arm. The house is very quiet after that." },
+          { goal: 'Go down to the water', where: 'Bellerive Beach', at: [-42.8746, 147.3741],
+            text: 'The river is flat as a plate. No gulls. The tide has gone out further than you have ever seen it, and the boats lie on their sides in the mud like sleeping dogs. You stand there until standing there stops meaning anything.' }
+        ] },
+      { title: 'The cutting', decay: 0.6,
+        legs: [
+          { goal: "Take a cutting of Dad's rose", where: 'the Botanical Gardens', at: [-42.86469, 147.32888],
+            text: 'The gates are open and nobody minds. You take a slip from the old rose by the conservatory, the one he always stopped at, and wrap the end in a wet handkerchief.' },
+          { goal: 'Plant it for Dad', where: 'Cornelian Bay cemetery', at: [-42.8541, 147.3196],
+            text: 'You plant the cutting beside his stone with your bare hands. It is absurd to plant anything now. You do it carefully anyway, and press the soil down, and water it from the tap by the gate.' }
+        ] },
+      { title: 'The mountain', decay: 0.8,
+        legs: [
+          { goal: 'Fill the tank', where: 'the nearest service station', fuel: true,
+            text: 'The attendant has gone. The pumps still work. You fill her up and leave the money on the counter under a jar of barley sugar, because some habits outlast the world.' },
+          { goal: 'Drive up the mountain', where: 'the Pinnacle, Mount Wellington', at: [-42.8957, 147.2367], last: true }
+        ] }
+    ],
+    ending: [
+      'You turn off the engine.',
+      'It ticks as it cools.',
+      'Below you the city lies under a light with no source, as if the whole river were the inside of a shell.',
+      'You are tired in the good way, the way you are after a long day of small jobs.',
+      'Your heart, which has kept time for you without complaint for thirty-one years, begins to lose the beat.',
+      'It is not frightening. It is like the radio going quiet between stations.',
+      'The last thing you think about is the tea, and whether anyone will drink it.'
+    ],
+    radio: [
+      ['…the Bureau says the brightness is not cloud and not smoke, and asks motorists to use their headlamps…', '…cricket at Bellerive is postponed. The groundsman says the grass has stopped growing…', '…and that was the Derwent Disco top ten. Stay tuned. We will be here as long as there is a here…'],
+      ['…reports from Melbourne and Perth describe the same pale sky. The Prime Minister has asked for calm, and is said to be calm himself…', '…the ferry will not run today. The ferry will not run…', '…if you are listening, ring your mother…'],
+      ['…we have lost contact with the mainland. We are still playing records. Somebody has to…', '…the birds have gone quiet across the state. Experts are unable to…', "…this one's for everybody still driving around…"],
+      ['…this is… this is the Hobart station of the… we are…', '…nothing further to report. There is nothing further.', '…(static)…'],
+      ['…(static)…', '…', '…(a long hiss, like surf)…']
+    ],
+    cosmos: [
+      'The light that fell on the mountain this morning left the sun eight minutes and twenty seconds earlier. It did not know you were there.',
+      'The Earth is four and a half billion years old. If all of that were a single day, people turned up in the last few seconds before midnight. You were here for a few hundred-thousandths of one of those seconds.',
+      'There are about two hundred billion galaxies we can see, each with hundreds of billions of stars. Around nearly all of them, nothing is happening at all, and nothing ever will.',
+      'In about a billion years the sun will grow bright enough to boil the oceans. In five billion it will swell and swallow the inner planets. No one will be left to notice that the Sigma was orange.',
+      'After the last star burns out, the galaxies will drift apart until each is alone in a dark it cannot see across. Matter itself may slowly come undone. In a googol years the last black holes will evaporate, and the universe will settle into a temperature so even that nothing can ever happen again.',
+      'There will be no record of the prescription, or the white photographs, or the rose. No one is keeping score. No one ever was.',
+      'All of this was already true while the tea was hot and Ruth was laughing.',
+      'It meant nothing. It meant nothing then, either.',
+      'You did the errands anyway.'
+    ],
+    credits: [
+      ['Driver', 'You'],
+      ['The car', 'A 1978 Chrysler Sigma, modelled from photographs of the real one'],
+      ['Hobart', '152,000 buildings and 3,000 km of streets from OpenStreetMap contributors, under the Open Database Licence'],
+      ['The ground', 'Elevation from the Mapzen terrain tiles. Colour from Sentinel-2 cloudless by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016)'],
+      ['The radio', 'Music composed in the browser as you drive. None of it was ever recorded, and none of it will be again'],
+      ['Rendering', 'three.js'],
+      ['Made with', 'Claude'],
+      ['', 'Mum, Ruth, Tom and Dad are invented. So, in the end, are you.']
+    ]
+  };
+
+  var Q = { mode: 'off', ch: 0, leg: 0, target: null, decay: 0, decayGoal: 0, radioT: 25, radioI: 0, scene: null, end: null };
+  function llToXZ(la, lo) { return [(lo - LON0) * KX, -(la - LAT0) * KN]; }
+  function resolveTarget(L) {
+    var x, z;
+    if (L.fuel) { var ns = nearestStation(car.x, car.z); if (!ns) return null; return { x: ns.st.x, z: ns.st.z, y: ns.st.y, r: Math.max(ns.st.hl, ns.st.hd) + 2, station: ns.st }; }
+    var p = llToXZ(L.at[0], L.at[1]); x = p[0]; z = p[1];
+    var rp = nearestRoadPoint(x, z, 450, 7);
+    if (rp) { var i = rp.i; x = PX[i] + (PX[i + 1] - PX[i]) * rp.t; z = PZ[i] + (PZ[i + 1] - PZ[i]) * rp.t; return { x: x, z: z, y: PH[i] + (PH[i + 1] - PH[i]) * rp.t, r: 20 }; }
+    return { x: x, z: z, y: terrainH(x, z, 4), r: 25 };
+  }
+
+  /* ---------- a column of pale light over the destination ---------- */
+  var beaconMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: LIT.uTime, uA: { value: 0 }, uNight: LIT.uNight },
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vec4 wp = modelMatrix * vec4(position, 1.0); vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - wp.xyz); gl_Position = projectionMatrix * viewMatrix * wp; }',
+    fragmentShader: [
+      'uniform float uTime; uniform float uA; uniform float uNight; varying vec2 vUv; varying vec3 vN; varying vec3 vV;',
+      'void main(){',
+      '  float edge = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 1.5);',
+      '  float core = 1.0 - edge;',
+      '  float h = vUv.y; float fade = smoothstep(0.0, 0.03, h) * (1.0 - smoothstep(0.35, 1.0, h));',
+      '  float shimmer = 0.75 + 0.25 * sin(h * 60.0 - uTime * 2.0);',
+      '  vec3 col = mix(vec3(1.0, 0.86, 0.6), vec3(1.0, 0.97, 0.9), h) * (0.35 + 0.65 * core) * shimmer;',
+      '  gl_FragColor = vec4(col * fade * uA * (0.55 + 0.6 * uNight), 1.0);',
+      '}'
+    ].join('\n')
+  });
+  var beacon = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.4, 420, 24, 1, true).translate(0, 210, 0), beaconMat);
+  beacon.frustumCulled = false; beacon.renderOrder = 8; beacon.visible = false; scene.add(beacon);
+  var ringMat = new THREE.MeshBasicMaterial({ color: 0xfff1d0, transparent: true, opacity: 0.0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+  var ring = new THREE.Mesh(new THREE.RingGeometry(0.92, 1.0, 48).rotateX(-Math.PI / 2), ringMat);
+  ring.renderOrder = 8; ring.visible = false; scene.add(ring);
+
+  /* ---------- page furniture ---------- */
+  function save() { try { localStorage.setItem('lastlight.v1', JSON.stringify({ ch: Q.ch, leg: Q.leg })); } catch (e) { } }
+  function loadSave() { try { var s = JSON.parse(localStorage.getItem('lastlight.v1') || 'null'); return s && s.ch >= 0 ? s : null; } catch (e) { return null; } }
+  function clearSave() { try { localStorage.removeItem('lastlight.v1'); } catch (e) { } }
+  var ROMAN = ['I', 'II', 'III', 'IV', 'V'];
+  function setLeg() {
+    var C = STORY.chapters[Q.ch], L = C.legs[Q.leg];
+    Q.target = resolveTarget(L); Q.mode = 'drive'; Q.hint = 0;
+    $('qChap').textContent = ROMAN[Q.ch] + ' · ' + C.title;
+    $('qGoal').textContent = L.goal;
+    $('qWhere').textContent = L.where;
+    $('quest').hidden = false;
+    save();
+  }
+  /* ---------- scenes: the car stops, the bars come in, the words come up ---------- */
+  var typing = null;
+  function showScene(opts) {
+    var ov = $('scene'), tx = $('sceneTxt');
+    ov.hidden = false; ov.classList.remove('white');
+    requestAnimationFrame(function () { ov.classList.add('on'); });
+    ov.classList.toggle('big', !!opts.big);
+    $('sceneHead').textContent = opts.head || '';
+    $('sceneSub').textContent = opts.sub || '';
+    tx.textContent = '';
+    var btn = $('sceneBtn'), alt = $('sceneAlt'), alt2 = $('sceneAlt2');
+    btn.hidden = true; alt.hidden = true; alt2.hidden = true;
+    var paras = opts.paras || [], full = paras.join('\n\n'), n = 0;
+    if (typing) clearInterval(typing);
+    var t0 = performance.now();
+    typing = setInterval(function () {
+      n = Math.max(n + 1, Math.floor((performance.now() - t0) / 1000 * 68)); tx.textContent = full.slice(0, n);
+      if (n >= full.length) { clearInterval(typing); typing = null; showButtons(); }
+    }, 28);
+    function showButtons() {
+      btn.textContent = opts.btn || 'Continue'; btn.hidden = false; btn.onclick = function () { closeScene(); opts.then && opts.then(); };
+      if (opts.alt) { alt.textContent = opts.alt; alt.hidden = false; alt.onclick = function () { closeScene(); opts.thenAlt && opts.thenAlt(); }; }
+      if (opts.alt2) { alt2.textContent = opts.alt2; alt2.hidden = false; alt2.onclick = function () { closeScene(); opts.thenAlt2 && opts.thenAlt2(); }; }
+      setTimeout(function () { try { btn.focus({ preventScroll: true }); } catch (e) { } }, 30);
+    }
+    /* a click or a key during typing shows the whole passage at once */
+    ov.onclick = function (ev) { if (typing && ev.target.tagName !== 'BUTTON') { clearInterval(typing); typing = null; tx.textContent = full; showButtons(); } };
+    LOCK.on = true;
+  }
+  function closeScene() {
+    var ov = $('scene'); ov.classList.remove('on');
+    setTimeout(function () { if (!ov.classList.contains('on')) ov.hidden = true; }, 700);
+    LOCK.on = false; canvas.focus();
+  }
+  function arrive() {
+    var C = STORY.chapters[Q.ch], L = C.legs[Q.leg];
+    Q.mode = 'scene'; beacon.visible = false; ring.visible = false;
+    if (L.last) { startEnding(); return; }
+    if (L.fuel) { car.fuel = TANK; car.engineOn = true; }
+    showScene({ head: L.goal, sub: L.where, paras: [L.text], then: function () {
+      if (Q.leg + 1 < C.legs.length) { Q.leg++; setLeg(); }
+      else nextChapter();
+    } });
+  }
+  function nextChapter() {
+    Q.ch++; Q.leg = 0;
+    var C = STORY.chapters[Q.ch];
+    Q.decayGoal = C.decay;
+    Q.radioT = 6; Q.radioI = 0;
+    showScene({ head: ROMAN[Q.ch], sub: C.title, paras: [], btn: 'Drive', big: true, then: function () { setLeg(); } });
+  }
+  function beginStory(fromSave) {
+    var s = fromSave ? loadSave() : null;
+    Q.ch = s ? Math.min(4, s.ch) : 0; Q.leg = s ? s.leg : 0;
+    Q.decayGoal = STORY.chapters[Q.ch].decay; Q.decay = Q.decayGoal * 0.6;
+    Q.radioT = 12; Q.radioI = 0;
+    if (!s) showScene({ head: ROMAN[0], sub: STORY.chapters[0].title, paras: [], btn: 'Drive', big: true, then: setLeg });
+    else setLeg();
+  }
+  function freeDrive() {
+    Q.mode = 'off'; Q.decayGoal = 0; $('quest').hidden = true; beacon.visible = false; ring.visible = false;
+  }
+  function titleCard() {
+    var s = loadSave();
+    showScene({ head: STORY.title, sub: STORY.sub, paras: STORY.prologue, big: true,
+      btn: s ? 'Continue the story' : 'Begin', then: function () { beginStory(!!s); },
+      alt: s ? 'Start again' : 'Just drive', thenAlt: s ? function () { clearSave(); beginStory(false); } : freeDrive,
+      alt2: s ? 'Just drive' : null, thenAlt2: freeDrive });
+  }
+
+  /* ---------- the ending ---------- */
+  function startEnding() {
+    Q.mode = 'ending';
+    /* turn the camera to look past the car, down over the city */
+    var toCity = Math.atan2(-(0 - car.z), 0 - car.x);
+    Q.end = { t: 0, line: -1, credits: false, yaw: Math.atan2(Math.sin(toCity - camYaw), Math.cos(toCity - camYaw)) };
+    orbit.yaw = Q.end.yaw; orbit.pitch = 0.05; camDist = 9;
+    LOCK.on = true; Q.decayGoal = 1;
+    $('quest').hidden = true;
+    var ov = $('scene'); ov.hidden = false; ov.classList.remove('big'); ov.classList.add('on', 'ending');
+    document.body.classList.add('cine');
+    $('sceneHead').textContent = ''; $('sceneSub').textContent = ''; $('sceneTxt').textContent = '';
+    ['sceneBtn', 'sceneAlt', 'sceneAlt2'].forEach(function (b) { $(b).hidden = true; });
+    clearSave();
+  }
+  function stepEnding(dt) {
+    var E = Q.end; E.t += dt;
+    if (Math.abs(car.vx) < 0.3 && car.engineOn && E.t > 1.5) car.engineOn = false;
+    /* the camera drifts up and away while the light comes in */
+    orbit.idle = -1e9; orbit.drag = false;
+    orbit.yaw = Q.end.yaw + Math.sin(E.t * 0.02) * 0.35; orbit.pitch = Math.min(0.5, 0.05 + E.t * 0.006); camDist = Math.min(30, 9 + E.t * 0.4);
+    var LINE_T = 6.5, n = STORY.ending.length;
+    var li = Math.floor((E.t - 3) / LINE_T);
+    while (E.line < Math.min(li, n - 1)) {
+      E.line++;
+      var p = document.createElement('p'); p.textContent = STORY.ending[E.line]; p.className = 'endline';
+      $('sceneTxt').appendChild(p);
+      (function (el) { requestAnimationFrame(function () { el.classList.add('in'); }); })(p);
+    }
+    var tEnd = 3 + n * LINE_T;
+    var beat = clamp((E.t - 10) / (tEnd - 10), 0, 1);
+    Sound.heart(E.t < 6 ? 0 : beat < 1 ? 64 - beat * 36 : 0, 0.55 * (1 - beat * 0.5));
+    Driver.state.slump = clamp((E.t - (tEnd - 14)) / 12, 0, 1);
+    Driver.state.alive = 1 - Driver.state.slump;
+    Sound.drone(clamp((E.t - 8) / 20, 0, 1) * 0.7);
+    finalPass.uniforms.uWhite.value = clamp((E.t - (tEnd - 6)) / 10, 0, 1);
+    if (E.t > tEnd + 6 && !E.credits) { E.credits = true; rollCredits(); }
+  }
+  function rollCredits() {
+    Q.mode = 'credits';
+    var ov = $('scene'); ov.classList.remove('on', 'ending'); ov.hidden = true;
+    var cr = $('credits'), body = $('credBody');
+    body.innerHTML = '';
+    function add(tag, text, cls) { var e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; body.appendChild(e); return e; }
+    add('h2', STORY.title); add('p', STORY.sub, 'csub');
+    add('div', '', 'gap');
+    STORY.cosmos.forEach(function (t) { add('p', t, 'cosmos'); });
+    add('div', '', 'gap');
+    STORY.credits.forEach(function (c) { var d = document.createElement('div'); d.className = 'crow'; if (c[0]) { var a = document.createElement('span'); a.className = 'clab'; a.textContent = c[0]; d.appendChild(a); } var b = document.createElement('span'); b.textContent = c[1]; if (!c[0]) b.className = 'cnote'; d.appendChild(b); body.appendChild(d); });
+    add('div', '', 'gap');
+    add('p', 'The end.', 'cend');
+    cr.hidden = false; cr.scrollTop = 0;
+    requestAnimationFrame(function () { cr.classList.add('on'); });
+    Sound.drone(1);
+    Q.credT = 0;
+  }
+  function stepCredits(dt) {
+    var cr = $('credits');
+    Q.credT += dt;
+    if (Q.credT > 4 && !Q.credHold) cr.scrollTop += dt * 26;
+    if (cr.scrollTop + cr.clientHeight >= cr.scrollHeight - 2) $('credBtns').classList.add('on');
+  }
+  function leaveCredits(story) {
+    var cr = $('credits'); cr.classList.remove('on'); setTimeout(function () { cr.hidden = true; $('credBtns').classList.remove('on'); }, 900);
+    Sound.drone(0); Sound.heart(0);
+    finalPass.uniforms.uWhite.value = 0; Driver.reset(); LOCK.on = false; document.body.classList.remove('cine');
+    Q.decay = 0; Q.decayGoal = 0; car.engineOn = true; camDist = 7; orbit.pitch = 0; orbit.yaw = 0; orbit.idle = 0;
+    placeOnRoad(0, 0); needWarm = true;
+    if (story) { clearSave(); beginStory(false); } else freeDrive();
+  }
+
+  /* ---------- every frame ---------- */
+  var qDir = ['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east'];
+  function stepQuest(dt) {
+    /* the world goes on fading towards where the story is */
+    Q.decay += (Q.decayGoal - Q.decay) * Math.min(1, dt * (Q.mode === 'ending' ? 0.08 : 0.05));
+    DECAY = Q.decay;
+    lifeMul = Q.mode === 'ending' || Q.mode === 'credits' ? Math.max(0, lifeMul - dt * 0.05) : 1 - Q.decay * 0.95;
+    finalPass.uniforms.uDesat.value = Q.decay * 0.78;
+    finalPass.uniforms.uTintA.value += ((camMode === 1 ? 0.55 : 0) - finalPass.uniforms.uTintA.value) * Math.min(1, dt * 4);
+    Radio.decay(Q.decay);
+    Driver.update(dt, camMode);
+    if (Q.mode === 'ending') { stepEnding(dt); return; }
+    if (Q.mode === 'credits') { stepCredits(dt); return; }
+    /* bulletins from a radio somewhere */
+    if (Q.mode === 'drive' || Q.mode === 'scene') {
+      Q.radioT -= dt;
+      if (Q.radioT < 0 && Q.mode === 'drive') {
+        var list = STORY.radio[Math.min(4, Q.ch)], cap = $('caption');
+        $('capTxt').textContent = list[Q.radioI % list.length]; Q.radioI++;
+        cap.hidden = false; requestAnimationFrame(function () { cap.classList.add('on'); });
+        setTimeout(function () { cap.classList.remove('on'); setTimeout(function () { cap.hidden = true; }, 800); }, 9000);
+        Q.radioT = 55 + Math.random() * 40;
+      }
+    }
+    if (Q.mode !== 'drive' || !Q.target) return;
+    var T = Q.target, d = Math.hypot(T.x - car.x, T.z - car.z);
+    beacon.visible = d > 12; beacon.position.set(T.x, T.y, T.z);
+    beaconMat.uniforms.uA.value = clamp((d - 12) / 40, 0, 1) * clamp(1 - (d - 2500) / 1500, 0.15, 1);
+    ring.visible = d < 160; ring.position.set(T.x, T.y + 0.08, T.z);
+    var rr = T.r * (0.92 + 0.08 * Math.sin(simTime * 2.5)); ring.scale.set(rr, 1, rr); ringMat.opacity = 0.35 * clamp(1 - d / 160, 0, 1) + 0.1;
+    var a = Math.atan2(-(T.z - car.z), T.x - car.x), rel = Math.atan2(Math.sin(a - car.h), Math.cos(a - car.h));
+    $('qArrow').style.transform = 'rotate(' + (-rel).toFixed(3) + 'rad)';
+    $('qDist').textContent = (d >= 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d / 10) * 10 + ' m') + ' ' + qDir[(Math.round(a / (Math.PI / 4)) + 8) % 8];
+    var slow = Math.abs(car.vx) < 2.8;
+    $('qHint').textContent = d < T.r ? (slow ? '' : 'Slow down and stop here.') : d < 120 ? 'Nearly there.' : '';
+    if (d < T.r && slow) arrive();
+  }
+  function questMap(mg, s, ox, oz) {
+    if (Q.mode !== 'drive' || !Q.target) return;
+    var px = Q.target.x * s + ox, pz = Q.target.z * s + oz, c = MMS / 2, R = c - 8;
+    var dx = px - c, dz = pz - c, dd = Math.hypot(dx, dz);
+    if (dd > R) { px = c + dx / dd * R; pz = c + dz / dd * R; }
+    var pulse = 4 + Math.sin(simTime * 4) * 1.2;
+    mg.beginPath(); mg.arc(px, pz, pulse + 3, 0, Math.PI * 2); mg.fillStyle = 'rgba(255, 241, 208, 0.35)'; mg.fill();
+    mg.beginPath(); mg.arc(px, pz, 4, 0, Math.PI * 2); mg.fillStyle = '#fff1d0'; mg.fill(); mg.strokeStyle = '#1d1a16'; mg.lineWidth = 1.5; mg.stroke();
+  }
+  $('credBtnStory').addEventListener('click', function () { leaveCredits(true); });
+  $('credBtnDrive').addEventListener('click', function () { leaveCredits(false); });
+  $('credSkip').addEventListener('click', function () { var cr = $('credits'); cr.scrollTop = cr.scrollHeight; });
+  $('credits').addEventListener('wheel', function () { Q.credHold = false; });
+  $('storyBtn').addEventListener('click', function () { if (Q.mode === 'scene' || Q.mode === 'ending' || Q.mode === 'credits') return; titleCard(); });
+  window.addEventListener('keydown', function (ev) {
+    if (ev.code !== 'Enter' && ev.code !== 'Space') return;
+    var ov = $('scene');
+    if (ov.hidden || Q.mode === 'ending') return;
+    if (typing) { ov.onclick({ target: ov }); ev.preventDefault(); return; }
+    if (document.activeElement && document.activeElement.tagName === 'BUTTON') return;
+    var b = $('sceneBtn'); if (!b.hidden) { b.click(); ev.preventDefault(); }
+  });
+  /* ==========================================================
+     THE DRIVER
+     Sits in the right-hand seat and never leaves the car: a feathered 70s shag, aviators with orange
+     glass, a burnt-orange shirt with a collar the size of a paper plane over a brown corduroy jacket,
+     and flares. The hands stay on the wheel and follow it round; the head looks into the corners.
+     All coordinates are the car's own (x forward, y up, z right).
+     ========================================================== */
+  var Driver = (function () {
+    var root = new THREE.Group(), headG = new THREE.Group(), torsoG = new THREE.Group();
+    carG.add(root);
+    function M(hex, rough, metal, extra) { return litMaterial(std(Object.assign({ color: new THREE.Color(hex), roughness: rough, metalness: metal || 0 }, extra || {})), { key: 'drv' + hex.replace('#', '') + (extra && extra.transparent ? 't' : '') }); }
+    var mSkin = M('#d9a07a', 0.6), mHair = M('#4b2914', 0.72), mJacket = M('#4a2c1a', 0.92), mShirt = M('#c4561d', 0.7), mPants = M('#8a6a42', 0.85),
+        mShoe = M('#2e1b10', 0.5), mGold = M('#c9a24a', 0.28, 1), mLens = M('#ff7a14', 0.04, 0.1, { transparent: true, opacity: 0.58, depthWrite: false }), mDark = M('#1a1310', 0.6);
+    mLens.emissive = new THREE.Color('#5a1e00'); mLens.emissiveIntensity = 0.35;
+    function mesh(g, m, parent, shadow) { var o = new THREE.Mesh(g, m); o.castShadow = shadow !== false; o.receiveShadow = true; (parent || root).add(o); return o; }
+    var up = new THREE.Vector3(0, 1, 0), tmpV = new THREE.Vector3(), tmpQ = new THREE.Quaternion();
+    /* a unit-height tapered limb that is stretched between two points every frame */
+    function limb(r0, r1, m, parent) { var g = new THREE.CylinderGeometry(r1, r0, 1, 10, 1); g.translate(0, 0.5, 0); return mesh(g, m, parent); }
+    function span(o, a, b) { tmpV.subVectors(b, a); var L = tmpV.length(); o.position.copy(a); o.quaternion.setFromUnitVectors(up, tmpV.normalize()); o.scale.set(1, L, 1); }
+    var Z = 0.37;
+    /* ---- legs: thighs along the seat, shins down to the pedals, flared at the hem ---- */
+    var hipL = new THREE.Vector3(0.02, 0.62, Z - 0.1), hipR = new THREE.Vector3(0.02, 0.62, Z + 0.1);
+    var kneeL = new THREE.Vector3(0.33, 0.7, Z - 0.11), kneeR = new THREE.Vector3(0.33, 0.7, Z + 0.12);
+    var footL = new THREE.Vector3(0.6, 0.32, Z - 0.12), footR = new THREE.Vector3(0.63, 0.33, Z + 0.13);
+    [[hipL, kneeL, footL], [hipR, kneeR, footR]].forEach(function (l) {
+      span(limb(0.085, 0.07, mPants), l[0], l[1]);
+      span(limb(0.065, 0.1, mPants), l[1], l[2]);
+      var sh = mesh(new THREE.BoxGeometry(0.27, 0.09, 0.11), mShoe); sh.position.copy(l[2]).add(new THREE.Vector3(0.07, -0.04, 0)); sh.rotation.z = -0.35;
+    });
+    mesh(new THREE.BoxGeometry(0.3, 0.16, 0.36), mPants).position.set(-0.01, 0.63, Z);
+    /* ---- torso, leaning back into the seat ---- */
+    root.add(torsoG); torsoG.position.set(0.02, 0.59, Z); torsoG.rotation.z = 0.19; torsoG.scale.setScalar(0.9);
+    var jk = new THREE.CylinderGeometry(0.19, 0.17, 0.44, 12, 1); jk.scale(0.62, 1, 1); jk.translate(0, 0.22, 0);
+    mesh(jk, mJacket, torsoG);
+    /* the shirt shows in a deep V between the lapels */
+    var vee = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.118, 0.42, -0.085), new THREE.Vector3(0.118, 0.42, 0.085), new THREE.Vector3(0.118, 0.17, 0)]);
+    vee.computeVertexNormals(); var vm = mesh(vee, mShirt, torsoG, false); vm.material.side = THREE.DoubleSide;
+    /* the collar: two long points lying out over the lapels */
+    [-1, 1].forEach(function (sd) {
+      var c = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.1, 0.45, sd * 0.03), new THREE.Vector3(0.115, 0.43, sd * 0.13), new THREE.Vector3(0.128, 0.29, sd * 0.11)]);
+      c.computeVertexNormals(); mesh(c, mShirt, torsoG, false);
+      var lap = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.12, 0.41, sd * 0.09), new THREE.Vector3(0.122, 0.4, sd * 0.16), new THREE.Vector3(0.121, 0.18, sd * 0.02)]);
+      lap.computeVertexNormals(); mesh(lap, mJacket, torsoG, false);
+    });
+    [mShirt, mJacket].forEach(function (m) { m.side = THREE.DoubleSide; });
+    /* a medallion, naturally */
+    var med = mesh(new THREE.CircleGeometry(0.018, 12), mGold, torsoG, false); med.position.set(0.122, 0.3, 0.004); med.rotation.y = Math.PI / 2;
+    /* ---- neck and head ---- */
+    var neck = mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.1, 10), mSkin, torsoG); neck.position.set(0.0, 0.48, 0);
+    torsoG.add(headG); headG.position.set(0.0, 0.55, 0);
+    var head = new THREE.SphereGeometry(0.095, 18, 14); head.scale(0.98, 1.16, 0.88); head.translate(0.012, 0.075, 0);
+    mesh(head, mSkin, headG);
+    var nose = mesh(new THREE.ConeGeometry(0.018, 0.04, 6), mSkin, headG); nose.rotation.z = -Math.PI / 2; nose.position.set(0.108, 0.06, 0);
+    [-1, 1].forEach(function (sd) { var ear = mesh(new THREE.SphereGeometry(0.022, 8, 6), mSkin, headG); ear.scale.set(0.6, 1.2, 0.5); ear.position.set(0.0, 0.07, sd * 0.084); });
+    var mouth = mesh(new THREE.BoxGeometry(0.004, 0.006, 0.036), mDark, headG, false); mouth.position.set(0.096, 0.0, 0);
+    /* hair: a full feathered shag, parted in the middle, over the ears and down to the collar */
+    var cap = new THREE.SphereGeometry(0.108, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.56); cap.scale(1.04, 1.08, 1.0); cap.translate(-0.005, 0.085, 0);
+    mesh(cap, mHair, headG);
+    [-1, 1].forEach(function (sd) {
+      var wing = new THREE.SphereGeometry(0.075, 12, 10); wing.scale(0.95, 1.35, 0.55);
+      var w = mesh(wing, mHair, headG); w.position.set(-0.01, 0.06, sd * 0.088); w.rotation.x = sd * 0.25;
+      var feather = new THREE.SphereGeometry(0.06, 10, 8); feather.scale(1.25, 0.55, 0.8);
+      var f = mesh(feather, mHair, headG); f.position.set(0.05, 0.155, sd * 0.06); f.rotation.x = -sd * 0.5; f.rotation.z = -0.25;
+    });
+    var back = new THREE.SphereGeometry(0.1, 14, 10); back.scale(0.75, 1.25, 1.05);
+    mesh(back, mHair, headG).position.set(-0.06, 0.03, 0);
+    /* aviators: big teardrop lenses in orange glass, thin gold wire */
+    [-1, 1].forEach(function (sd) {
+      var lg = new THREE.CircleGeometry(0.03, 20); lg.scale(1.15, 1.0, 1); lg.translate(0, -0.006, 0);
+      var pos = lg.attributes.position; for (var i = 0; i < pos.count; i++) { var y = pos.getY(i); if (y < -0.006) pos.setX(i, pos.getX(i) * (1 - (y + 0.006) * -5)); }
+      var lens = mesh(lg, mLens, headG, false); lens.position.set(0.1, 0.072, sd * 0.038); lens.rotation.y = Math.PI / 2; lens.renderOrder = 5;
+      var rim = mesh(new THREE.TorusGeometry(0.033, 0.0022, 4, 24), mGold, headG, false); rim.position.copy(lens.position); rim.rotation.y = Math.PI / 2; rim.scale.set(1.1, 1.02, 1);
+      var temple = mesh(new THREE.BoxGeometry(0.11, 0.003, 0.003), mGold, headG, false); temple.position.set(0.045, 0.08, sd * 0.077);
+    });
+    var bridge = mesh(new THREE.BoxGeometry(0.003, 0.003, 0.02), mGold, headG, false); bridge.position.set(0.103, 0.088, 0);
+    /* ---- arms: shoulders to hands on the wheel, solved every frame ---- */
+    var upL = limb(0.05, 0.046, mJacket), upR = limb(0.05, 0.046, mJacket), loL = limb(0.044, 0.04, mJacket), loR = limb(0.044, 0.04, mJacket);
+    var cuffL = limb(0.042, 0.042, mShirt), cuffR = limb(0.042, 0.042, mShirt);
+    var handL = mesh(new THREE.BoxGeometry(0.085, 0.035, 0.07), mSkin), handR = mesh(new THREE.BoxGeometry(0.085, 0.035, 0.07), mSkin);
+    var C0 = new THREE.Vector3(0.47, 0.885, 0.37), U = new THREE.Vector3(0.408, 0.913, 0), Wv = new THREE.Vector3(0, 0, 1), RIM = 0.19;
+    var sh = new THREE.Vector3(), hd = new THREE.Vector3(), el = new THREE.Vector3(), pole = new THREE.Vector3(), lap = new THREE.Vector3(), wrist = new THREE.Vector3(), m4 = new THREE.Matrix4();
+    function solve(S, H, side, upper, lower, cuff, hand) {
+      var L1 = 0.29, L2 = 0.28; tmpV.subVectors(H, S); var d = Math.min(tmpV.length(), L1 + L2 - 0.002), dir = tmpV.normalize().clone();
+      var a = (L1 * L1 - L2 * L2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+      pole.set(-0.1, -1, side * 0.6); pole.addScaledVector(dir, -pole.dot(dir)).normalize();
+      el.copy(S).addScaledVector(dir, a).addScaledVector(pole, h);
+      var Hc = S.clone().addScaledVector(dir, d);
+      wrist.copy(el).lerp(Hc, 0.88);
+      span(upper, S, el); span(lower, el, wrist); span(cuff, wrist, Hc);
+      hand.position.copy(Hc).addScaledVector(dir, 0.03);
+      hand.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir);
+    }
+    var state = { look: 0, glance: 0, glanceT: 3, slump: 0, breath: 0, alive: 1 };
+    function update(dt, camMode) {
+      state.breath += dt * (state.alive > 0.5 ? 1.6 : 1.6 * state.alive + 0.05);
+      var sl = state.slump;
+      torsoG.rotation.z = 0.19 - sl * 0.3;
+      torsoG.scale.set(0.9 * (1 + Math.sin(state.breath) * 0.012 * state.alive), 0.9, 0.9);
+      /* look into the corners, now and then a glance to the side or the mirror */
+      state.glanceT -= dt;
+      if (state.glanceT < 0) { state.glance = Math.random() < 0.5 ? (Math.random() - 0.5) * 1.4 : 0; state.glanceT = 2 + Math.random() * 5; }
+      var want = (car.sIn * 0.55 + state.glance * 0.5) * (1 - sl);
+      state.look += (want - state.look) * Math.min(1, dt * 3);
+      headG.rotation.set(0, state.look, -sl * 0.55);
+      headG.visible = camMode !== 1;
+      /* hands at ten and two, following the rim as it turns, and later resting in the lap */
+      var th = clamp(-car.steer * 14, -1.4, 1.4);
+      torsoG.updateMatrix(); m4.copy(torsoG.matrix);
+      [[-1, upL, loL, cuffL, handL], [1, upR, loR, cuffR, handR]].forEach(function (A) {
+        var sd = A[0];
+        sh.set(0.01, 0.43, sd * 0.2).applyMatrix4(m4);
+        var phi = sd * 1.05 + th;
+        hd.copy(C0).addScaledVector(U, Math.cos(phi) * RIM).addScaledVector(Wv, Math.sin(phi) * RIM);
+        lap.set(0.2, 0.72, Z + sd * 0.09);
+        hd.lerp(lap, sl);
+        solve(sh, hd, sd, A[1], A[2], A[3], A[4]);
+      });
+    }
+    function reset() { state.slump = 0; state.alive = 1; }
+    return { update: update, state: state, reset: reset, root: root };
   })();
 
   /* ==========================================================
@@ -4962,6 +5555,7 @@
       }
       mg.strokeStyle = pass ? '#e8a54a' : '#9c978c'; mg.lineWidth = pass ? 2.4 : 1.1; mg.stroke();
     }
+    questMap(mg, s, ox, oz);
     FUEL.forEach(function (st) { var px = st.x * s + ox, pz = st.z * s + oz; if (px > -6 && pz > -6 && px < MMS + 6 && pz < MMS + 6) { mg.fillStyle = '#1d1a16'; mg.fillRect(px - 4, pz - 4, 8, 8); mg.fillStyle = '#ffd25a'; mg.fillRect(px - 3, pz - 3, 6, 6); } });
     mg.fillStyle = '#9fd0e8';
     others.forEach(function (o) { if (o.i >= 0) mg.fillRect(o.x * s + ox - 1.5, o.z * s + oz - 1.5, 3, 3); });
@@ -5026,6 +5620,7 @@
     stepPeds(dt);
     finishBlobs();
     Sound.update(dt);
+    stepQuest(dt);
     updateSignals(simTime);
     if (Math.hypot(car.x - lastPlan.x, car.z - lastPlan.z) > 14 || (pending && !queue.length)) { plan(car.x, car.z); pending = false; }
     if (queue.length) { buildSome(6); pending = true; }
@@ -5082,7 +5677,7 @@
           if (i > a && PL[i] - PL[i - 1] > 0.5 && Math.abs(PH[i] - PH[i - 1]) / (PL[i] - PL[i - 1]) > 0.3) steep++;
         } }
       return { bumpMeanCm: +(100 * sum / n).toFixed(2), bumpMaxCm: +(100 * mx).toFixed(1), over15cm: big, steeper30pct: steep, n: n };
-    }, stepCar: stepCar, types: typeMeshes, fuel: FUEL, stops: STOPS_ALL, peds: peds, fill: fill, tow: tow, setFuelFactor: function (f) { fuelFactor = f; }, setPeds: function (n) { pedCount = n; }, carG: carG, dbg: DBG, cands: groundCands, cornerWorld: cornerWorld, groundAt: function (x, z, r) { return carGround(x, z, r); }, net: function () { return { PNX: PNX, PNZ: PNZ, PE: PE, ESW: ESW, PX: PX, PZ: PZ, PH: PH, PL: PL, ES: ES, ECL: ECL, EF: EF, NE: NE, EW: EW }; }, setTraffic: function (n) { trafficCount = n; }, placeAt: placeCarAt, TYPES: TYPES, renderer: renderer, scene: scene, view: function (y, p, d) { orbit.yaw = y; orbit.pitch = p; camDist = d; orbit.idle = -1e9; }, sigs: SIGS, others: others, car: car, keys: keys, place: placeOnRoad, warmAll: function () { for (var k = 0; k < 4; k++) { plan(car.x, car.z); while (queue.length) buildSome(1000); } plan(car.x, car.z); }, chunks: chunks, env: env, film: film, setWeather: setWeather, radio: Radio,
+    }, stepCar: stepCar, types: typeMeshes, fuel: FUEL, stops: STOPS_ALL, peds: peds, fill: fill, tow: tow, setFuelFactor: function (f) { fuelFactor = f; }, setPeds: function (n) { pedCount = n; }, carG: carG, dbg: DBG, Q: Q, resolveTarget: resolveTarget, streetAt: function (e) { return ENM && NAMES[ENM[e]]; }, nearestRoadPoint: nearestRoadPoint, pedSpawn: pedSpawn, story: STORY, arrive: function () { arrive(); }, beginStory: beginStory, driver: Driver, finalPass: finalPass, setCam: setCam, cands: groundCands, cornerWorld: cornerWorld, groundAt: function (x, z, r) { return carGround(x, z, r); }, net: function () { return { PNX: PNX, PNZ: PNZ, PE: PE, ESW: ESW, PX: PX, PZ: PZ, PH: PH, PL: PL, ES: ES, ECL: ECL, EF: EF, NE: NE, EW: EW }; }, setTraffic: function (n) { trafficCount = n; }, placeAt: placeCarAt, TYPES: TYPES, renderer: renderer, scene: scene, view: function (y, p, d) { orbit.yaw = y; orbit.pitch = p; camDist = d; orbit.idle = -1e9; }, sigs: SIGS, others: others, car: car, keys: keys, place: placeOnRoad, warmAll: function () { for (var k = 0; k < 4; k++) { plan(car.x, car.z); while (queue.length) buildSome(1000); } plan(car.x, car.z); }, chunks: chunks, env: env, film: film, setWeather: setWeather, radio: Radio,
     stats: function () { return { edges: NE, points: PX ? PX.length : 0, buildings: BLD ? BLD.N : 0, signals: SIGS.length, chunks: chunks.size, queue: queue.length, calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; } };
 
   loadMsg.textContent = 'Loading the Hobart map…';
@@ -5118,6 +5713,7 @@
       warm(function () {
         others.forEach(function (o) { spawnOther(o, true); });
         loadEl.hidden = true; running = true; last = performance.now();
+        setTimeout(titleCard, 900);
         canvas.focus();
       });
     })

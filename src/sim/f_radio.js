@@ -12,7 +12,7 @@
       { f: 101.3, name: 'Sandy Bay Funk', g: 'funk' },
       { f: 105.7, name: 'Glam 105', g: 'glam' }
     ];
-    var ctx = null, master, music, radioIn, staticG, noiseBuf, on = false, freq = 96.9, vol = 0.55, song = null, current = null, timer = null, seed = (Math.random() * 1e6) | 0;
+    var dec = 0, ctx = null, master, music, radioIn, staticG, noiseBuf, on = false, freq = 96.9, vol = 0.55, song = null, current = null, timer = null, seed = (Math.random() * 1e6) | 0;
     function rng(s) { return function () { s |= 0; s = s + 0x6D2B79F5 | 0; var t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
     function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
     function init() {
@@ -262,14 +262,15 @@
         else current = null;
       }
       var t = ctx.currentTime;
-      radioIn.gain.setTargetAtTime(on && current ? sig * sig : 0, t, 0.05);
-      staticG.gain.setTargetAtTime(on ? (1 - sig) * 0.16 + 0.006 : 0, t, 0.05);
+      var live = Math.pow(clamp(1 - dec * 1.05, 0, 1), 1.5);
+      radioIn.gain.setTargetAtTime(on && current ? sig * sig * live : 0, t, 0.3);
+      staticG.gain.setTargetAtTime(on ? (1 - sig * live) * 0.16 + 0.006 : 0, t, 0.3);
       updateLabel(sig);
     }
     function updateLabel(sig) {
       var lab = $('station'), fq = $('freq');
       if (fq) fq.textContent = freq.toFixed(1);
-      if (lab) lab.textContent = !on ? 'Off' : current && sig > 0.25 ? current.name : 'Static…';
+      if (lab) lab.textContent = !on ? 'Off' : current && sig > 0.25 && dec < 0.9 ? current.name : 'Static…';
       var sl = $('tune'); if (sl && Math.abs(+sl.value - freq) > 0.05) sl.value = freq.toFixed(1);
     }
     return {
@@ -290,6 +291,8 @@
       },
       tune: function (f) { freq = f; tuneUpdate(); },
       volume: function (v) { vol = v; if (master) master.gain.setTargetAtTime(v, ctx.currentTime, 0.05); },
-      label: function () { updateLabel(0); }
+      label: function () { updateLabel(0); },
+      decay: function (v) { if (Math.abs(v - dec) > 0.001) { dec = v; tuneUpdate(); } },
+      isOn: function () { return on; }
     };
   })();

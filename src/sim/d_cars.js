@@ -70,10 +70,11 @@
     return mu;
   }
   function tyreF(alpha, Fz, mu, B) { return mu * Fz * Math.sin(1.45 * Math.atan((B || 9.5) * alpha)); }
-  var fuelFactor = 5, DBG = { flat: false };
+  var fuelFactor = 5, DBG = { flat: false }, LOCK = { on: false }, lifeMul = 1;
   function stepCar(dt) {
     var up = keys.ArrowUp || keys.KeyW || touch.g, dn = keys.ArrowDown || keys.KeyS || touch.b;
     var lf = keys.ArrowLeft || keys.KeyA || touch.l, rt = keys.ArrowRight || keys.KeyD || touch.r, hb = !!keys.Space;
+    if (LOCK.on) { up = false; dn = false; lf = false; rt = false; hb = false; }
     /* steering: the wheel winds on gradually and unwinds a little faster */
     var target = (lf ? 1 : 0) - (rt ? 1 : 0);
     var rate = target === 0 ? 2.0 : (car.sIn * target < 0 ? 2.6 : 1.0);
@@ -84,6 +85,7 @@
     var thrIn = 0, brkIn = 0;
     if (car.gear === -1) { if (dn) thrIn = 1; if (up) { if (car.vx < -0.3) brkIn = 1; else car.gear = 1; } }
     else { if (up) thrIn = 1; if (dn) { if (car.vx > 0.4) brkIn = 1; else if (!up) car.gear = -1; } }
+    if (LOCK.on && Math.abs(car.vx) > 0.05) brkIn = 1;
     if (!car.engineOn || car.cut) thrIn = 0;
     car.thr += clamp(thrIn - car.thr, -dt * 6, dt * 3.5);
     car.brk += clamp(brkIn - car.brk, -dt * 8, dt * 5);
@@ -642,7 +644,7 @@
     var q, o;
     for (q = 0; q < others.length; q++) {
       o = others[q];
-      if (q >= trafficCount) { o.i = -1; continue; }
+      if (q >= Math.round(trafficCount * lifeMul)) { o.i = -1; continue; }
       if (o.i < 0 || Math.hypot(o.x - car.x, o.z - car.z) > 440) { spawnOther(o, false); if (o.i < 0) continue; }
       var e = PE[o.i], a = ES[e], b = ES[e + 1] - 1, sl, T = TYPES[o.type];
       var toEnd = o.dir > 0 ? PL[b] - PL[o.i] - o.t : PL[o.i] + o.t, target = ESP[e] / 3.6 * o.k * (T.bus || T.truck ? 0.85 : 1);

@@ -65,7 +65,7 @@
   var pmrem = new THREE.PMREMGenerator(renderer), envRT = null, envT = 99, envLast = -99, envKey = '';
   function updateEnv(dt) {
     var now = performance.now() / 1000; envT = now - envLast;
-    var key = Math.round(sdir.y * 60) + ':' + Math.round(W.cloud * 20) + ':' + Math.round(W.dark * 10) + ':' + Math.round(LIT.uNight.value * 20);
+    var key = Math.round(DECAY * 10) + ':' + Math.round(sdir.y * 60) + ':' + Math.round(W.cloud * 20) + ':' + Math.round(W.dark * 10) + ':' + Math.round(LIT.uNight.value * 20);
     if (envT < 4 || (key === envKey && envT < 20)) return;
     envLast = now; envKey = key;
     var old = envRT;
@@ -104,6 +104,7 @@
     { e: 0.25, zen: C('#3d6aa6'), hor: C('#b9cde0'), sun: C('#ffe4c0') },
     { e: 1.0, zen: C('#2f5f9e'), hor: C('#c4d6e6'), sun: C('#fff5e6') }
   ];
+  var DECAY = 0, pale = new THREE.Color();
   var zen = new THREE.Color(), hor = new THREE.Color(), sunc = new THREE.Color(), grey = new THREE.Color(), sdir = new THREE.Vector3();
   var exposure = 1;
   function updateSky(dt) {
@@ -128,6 +129,13 @@
     var lum = (hor.r + hor.g + hor.b) / 3;
     grey.setRGB(lum, lum * 1.02, lum * 1.08).multiplyScalar(0.85 - W.dark * 0.45);
     hor.lerp(grey, W.cloud * 0.8); zen.lerp(grey.multiplyScalar(0.85), W.cloud * 0.85);
+    /* the long afternoon: as the story goes on, the sky turns the colour of milk and the sun loses its edge */
+    if (DECAY > 0) {
+      var dl = 0.18 + 0.82 * sstep(-0.18, 0.2, e);
+      pale.setRGB(0.93, 0.91, 0.86).multiplyScalar(dl); hor.lerp(pale, DECAY * 0.75);
+      pale.setRGB(0.82, 0.83, 0.82).multiplyScalar(dl); zen.lerp(pale, DECAY * 0.6);
+      pale.setRGB(1.0, 0.97, 0.9); sunc.lerp(pale, DECAY * 0.7);
+    }
     var night = 1 - sstep(-0.1, 0.05, e);
     skyU.uSun.value.copy(sdir); skyU.uZen.value.copy(zen); skyU.uHor.value.copy(hor); skyU.uSunCol.value.copy(sunc);
     skyU.uCloud.value = W.cloud; skyU.uCloudDark.value = W.dark;
@@ -135,13 +143,14 @@
     LIT.uWet.value = W.wet; LIT.uSnowline.value = W.snowline; LIT.uSnowAll.value = W.all;
     WIND.value = W.wind;
     scene.fog.color.copy(hor);
-    scene.fog.near = W.fn; scene.fog.far = W.ff;
+    scene.fog.near = W.fn * (1 - 0.6 * DECAY); scene.fog.far = W.ff * (1 - 0.62 * DECAY);
     var sunUp = sstep(-0.03, 0.12, e);
-    sun.color.copy(sunc); sun.intensity = 1.35 * sunUp * (1 - 0.82 * W.cloud * (0.6 + 0.4 * W.dark));
+    sun.color.copy(sunc); sun.intensity = 1.35 * sunUp * (1 - 0.82 * W.cloud * (0.6 + 0.4 * W.dark)) * (1 - 0.5 * DECAY);
     sun.castShadow = sun.intensity > 0.12 && SHQ > 0;
     hemi.color.copy(zen).lerp(hor, 0.5).multiplyScalar(1.25); hemi.groundColor.setRGB(0.25, 0.23, 0.2).multiplyScalar(0.35 + 0.65 * sstep(-0.1, 0.3, e));
     hemi.intensity = 0.3 + 0.6 * sstep(-0.15, 0.35, e) * (1 - 0.3 * W.dark) + 0.25 * W.cloud * sstep(0, 0.3, e);
     moon.intensity = 0.16 * night * (1 - W.cloud * 0.7);
+    hemi.intensity += 0.22 * DECAY * sstep(-0.2, 0.2, e);
     waterU.uSun.value.copy(sdir); waterU.uSunCol.value.copy(sunc).multiplyScalar(sunUp); waterU.uZen.value.copy(zen); waterU.uHor.value.copy(hor);
     waterU.uFogC.value.copy(hor); waterU.uFogN.value = W.fn; waterU.uFogF.value = W.ff; waterU.uCloud.value = W.cloud; waterU.uWind.value = W.wind;
     /* the sky now lights the scene through the environment map, so the hemisphere fill is lighter */
@@ -223,10 +232,12 @@
   });
   var finalPass = new THREE.ShaderMaterial({
     uniforms: { tScene: { value: null }, tGlow: { value: null }, uRes: { value: new THREE.Vector2() }, uGP: { value: new THREE.Vector2() }, uTime: LIT.uTime,
-                uGrain: { value: 0.6 }, uFilm: { value: 1 }, uExp: { value: 1 }, uSRGB: { value: LINEAR_RT ? 0 : 1 } },
+                uGrain: { value: 0.6 }, uFilm: { value: 1 }, uExp: { value: 1 }, uSRGB: { value: LINEAR_RT ? 0 : 1 },
+                uDesat: { value: 0 }, uWhite: { value: 0 }, uTint: { value: new THREE.Color(1, 0.8, 0.52) }, uTintA: { value: 0 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: [
       'uniform sampler2D tScene; uniform sampler2D tGlow; uniform vec2 uRes; uniform vec2 uGP; uniform float uTime; uniform float uGrain; uniform float uFilm; uniform float uExp; uniform float uSRGB;',
+      'uniform float uDesat; uniform float uWhite; uniform vec3 uTint; uniform float uTintA;',
       'varying vec2 vUv;',
       'vec3 aces(vec3 x){ return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }',
       'float h12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }',
@@ -243,6 +254,8 @@
       '  c += g * (uFilm > 0.5 ? vec3(1.15, 0.72, 0.5) : vec3(0.7));',
       '  c = aces(c * uExp);',
       '  c = pow(c, vec3(1.0 / 2.2));',
+      '  float lq = dot(c, vec3(0.299, 0.587, 0.114)); c = mix(c, vec3(lq) * vec3(1.0, 0.99, 0.96), uDesat);',
+      '  c = mix(c, c * uTint * 1.15, uTintA);',
       '  if (uFilm > 0.5) {',
       '    float l = dot(c, vec3(0.299, 0.587, 0.114));',
       '    c = mix(vec3(l), c, 0.84);',
@@ -258,6 +271,7 @@
       '    float sp = step(0.99993, h12(floor(fc / 3.0) + fr * 1.37));',
       '    c = mix(c, vec3(0.08), sp * uGrain);',
       '  }',
+      '  c = mix(c, vec3(0.985, 0.975, 0.955), uWhite);',
       '  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);',
       '}'
     ].join('\n'), depthTest: false, depthWrite: false

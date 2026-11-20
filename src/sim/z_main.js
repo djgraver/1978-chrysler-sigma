@@ -278,6 +278,7 @@
       }
       mg.strokeStyle = pass ? '#e8a54a' : '#9c978c'; mg.lineWidth = pass ? 2.4 : 1.1; mg.stroke();
     }
+    questMap(mg, s, ox, oz);
     FUEL.forEach(function (st) { var px = st.x * s + ox, pz = st.z * s + oz; if (px > -6 && pz > -6 && px < MMS + 6 && pz < MMS + 6) { mg.fillStyle = '#1d1a16'; mg.fillRect(px - 4, pz - 4, 8, 8); mg.fillStyle = '#ffd25a'; mg.fillRect(px - 3, pz - 3, 6, 6); } });
     mg.fillStyle = '#9fd0e8';
     others.forEach(function (o) { if (o.i >= 0) mg.fillRect(o.x * s + ox - 1.5, o.z * s + oz - 1.5, 3, 3); });
@@ -342,6 +343,7 @@
     stepPeds(dt);
     finishBlobs();
     Sound.update(dt);
+    stepQuest(dt);
     updateSignals(simTime);
     if (Math.hypot(car.x - lastPlan.x, car.z - lastPlan.z) > 14 || (pending && !queue.length)) { plan(car.x, car.z); pending = false; }
     if (queue.length) { buildSome(6); pending = true; }
@@ -398,7 +400,7 @@
           if (i > a && PL[i] - PL[i - 1] > 0.5 && Math.abs(PH[i] - PH[i - 1]) / (PL[i] - PL[i - 1]) > 0.3) steep++;
         } }
       return { bumpMeanCm: +(100 * sum / n).toFixed(2), bumpMaxCm: +(100 * mx).toFixed(1), over15cm: big, steeper30pct: steep, n: n };
-    }, stepCar: stepCar, types: typeMeshes, fuel: FUEL, stops: STOPS_ALL, peds: peds, fill: fill, tow: tow, setFuelFactor: function (f) { fuelFactor = f; }, setPeds: function (n) { pedCount = n; }, carG: carG, dbg: DBG, cands: groundCands, cornerWorld: cornerWorld, groundAt: function (x, z, r) { return carGround(x, z, r); }, net: function () { return { PNX: PNX, PNZ: PNZ, PE: PE, ESW: ESW, PX: PX, PZ: PZ, PH: PH, PL: PL, ES: ES, ECL: ECL, EF: EF, NE: NE, EW: EW }; }, setTraffic: function (n) { trafficCount = n; }, placeAt: placeCarAt, TYPES: TYPES, renderer: renderer, scene: scene, view: function (y, p, d) { orbit.yaw = y; orbit.pitch = p; camDist = d; orbit.idle = -1e9; }, sigs: SIGS, others: others, car: car, keys: keys, place: placeOnRoad, warmAll: function () { for (var k = 0; k < 4; k++) { plan(car.x, car.z); while (queue.length) buildSome(1000); } plan(car.x, car.z); }, chunks: chunks, env: env, film: film, setWeather: setWeather, radio: Radio,
+    }, stepCar: stepCar, types: typeMeshes, fuel: FUEL, stops: STOPS_ALL, peds: peds, fill: fill, tow: tow, setFuelFactor: function (f) { fuelFactor = f; }, setPeds: function (n) { pedCount = n; }, carG: carG, dbg: DBG, Q: Q, resolveTarget: resolveTarget, streetAt: function (e) { return ENM && NAMES[ENM[e]]; }, nearestRoadPoint: nearestRoadPoint, pedSpawn: pedSpawn, story: STORY, arrive: function () { arrive(); }, beginStory: beginStory, driver: Driver, finalPass: finalPass, setCam: setCam, cands: groundCands, cornerWorld: cornerWorld, groundAt: function (x, z, r) { return carGround(x, z, r); }, net: function () { return { PNX: PNX, PNZ: PNZ, PE: PE, ESW: ESW, PX: PX, PZ: PZ, PH: PH, PL: PL, ES: ES, ECL: ECL, EF: EF, NE: NE, EW: EW }; }, setTraffic: function (n) { trafficCount = n; }, placeAt: placeCarAt, TYPES: TYPES, renderer: renderer, scene: scene, view: function (y, p, d) { orbit.yaw = y; orbit.pitch = p; camDist = d; orbit.idle = -1e9; }, sigs: SIGS, others: others, car: car, keys: keys, place: placeOnRoad, warmAll: function () { for (var k = 0; k < 4; k++) { plan(car.x, car.z); while (queue.length) buildSome(1000); } plan(car.x, car.z); }, chunks: chunks, env: env, film: film, setWeather: setWeather, radio: Radio,
     stats: function () { return { edges: NE, points: PX ? PX.length : 0, buildings: BLD ? BLD.N : 0, signals: SIGS.length, chunks: chunks.size, queue: queue.length, calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; } };
 
   loadMsg.textContent = 'Loading the Hobart map…';
@@ -434,6 +436,7 @@
       warm(function () {
         others.forEach(function (o) { spawnOther(o, true); });
         loadEl.hidden = true; running = true; last = performance.now();
+        setTimeout(titleCard, 900);
         canvas.focus();
       });
     })
